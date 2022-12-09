@@ -308,6 +308,14 @@ button {
     color: var(--border-color);
 }
 
+.comment blockquote::before {
+    content: "On Sat Nov 16 2075 16:03, Gabriel Saad wrote:";
+}
+
+.comment blockquote>*::before {
+    content: ">";
+}
+
 .post-section-title {
     font-size: 20px;
     padding: 17px 0px 12px;
