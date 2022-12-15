@@ -40,11 +40,24 @@ const facesSideloader = new HumanFacesSideloader(200); // Side-load 200 faces in
 
 const rng = new Random();
 
-function tryAsComment(datum: ApiObj): Listing<SnooComment> | undefined {
+enum ListingDisambiguationError {
+    Malformed = "The listing is critically malformed",
+    Empty = "The listing has no children",
+    WrongKind = "The listing is the wrong kind"
+}
+function tryAsComment(datum: ApiObj): Listing<SnooComment> | Error {
     const duck = (datum.data as any);
-    if (duck.children !== undefined && duck.children.length > 0 && duck.children[0].kind === "t1") {
-        return duck as Listing<SnooComment>;
+    if (duck.children === undefined) {
+        return new Error(ListingDisambiguationError.Malformed);
+    } 
+    if (duck.children.length <= 0) {
+        return new Error(ListingDisambiguationError.Empty);
     }
+    if (duck.children[0].kind !== "t1") {
+        return new Error(ListingDisambiguationError.WrongKind);
+    }
+
+    return duck as Listing<SnooComment>;
 }
 
 type Permalink = string;
@@ -194,7 +207,7 @@ function displayPosts(responses) {
 type CommentBuilderOptions = {indent: number, ppBuffer: HTMLImageElement[], post: Permalink};
 
 function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],  {post, indent=0, ppBuffer=[]}: CommentBuilderOptions) {
-    if (listing === undefined || listing.length === 0) {
+    if (listing.length === 0) {
         return;
     }
 
@@ -226,25 +239,45 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
             const data = redditObj as MoreComments;
             const moreElement = document.createElement("span");
             moreElement.classList.add("btn-more");
-            if (isDebugMode()) console.log(moreElement, redditObj, listing);
-
+            
             moreElement.addEventListener("click", () => {
+                moreElement.classList.add("waiting");
                 fetch(`${redditBaseURL}${post}${data.data.id}.json`)
+                    .catch((e) => {
+                        moreElement.classList.remove("waiting");
+                        console.error(e);
+                    })
                     .then((response: Response) => { 
                         return response.json()
                     })
+                    .catch((e) => {
+                        console.error(e);
+                    })
                     .then((data: ApiObj[]) => {
-                        if (data[1] !== undefined && data[1].kind === "Listing") {
-                            const listing = tryAsComment(data[1]);
-                            if (listing !== undefined) {
-                                moreElement.remove();
-                                displayCommentsRecursive(parentElement, listing.children, {
-                                    indent: indent + 10,
-                                    ppBuffer: ppBuffer,
-                                    post: post
-                                });
+                        if (data[1] === undefined || data[1].kind !== "Listing") {
+                            console.error(data);
+                            return Promise.reject();
+                        }
+
+                        moreElement.remove();
+
+                        const listing = tryAsComment(data[1]);
+                        if (listing instanceof Error) {
+                            const error = listing;
+                            if (error.message === ListingDisambiguationError.Empty) {
+                                if (isDebugMode()) console.log("Listing was empty :)", data);
+                                return Promise.resolve();
+                            } else {
+                                return Promise.reject(error.message);
                             }
                         }
+
+                        displayCommentsRecursive(parentElement, listing.children, {
+                            indent: indent + 10,
+                            ppBuffer: ppBuffer,
+                            post: post
+                        });
+                        return Promise.resolve();
                     });
             });
             parentElement.appendChild(moreElement);

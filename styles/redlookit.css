@@ -467,6 +467,9 @@ button {
     top: -0.175em;
     left: 1em;
 }
+.btn-more.waiting:hover::before {
+    content: "Loading...";
+}
 
 button .menu {
     padding: 0;
