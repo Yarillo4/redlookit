@@ -40,7 +40,15 @@ const facesSideloader = new HumanFacesSideloader(200); // Side-load 200 faces in
 
 const rng = new Random();
 
-function showRedditLink(permalink: string): boolean {
+function tryAsComment(datum: ApiObj): Listing<SnooComment> | undefined {
+    const duck = (datum.data as any);
+    if (duck.children !== undefined && duck.children.length > 0 && duck.children[0].kind === "t1") {
+        return duck as Listing<SnooComment>;
+    }
+}
+
+type Permalink = string;
+function showRedditLink(permalink: Permalink): boolean {
     const postMatch = permalink.match(/\/?r\/([^/]+?)\/comments\/([^/]+)/);
     if (isDebugMode()) console.log("postMatch", postMatch);
 
@@ -65,7 +73,7 @@ function showRedditLink(permalink: string): boolean {
     }
 }
 
-function showRedditPageOrDefault(permalink: string | null) {
+function showRedditPageOrDefault(permalink: Permalink | null) {
     if (isDebugMode()) console.log("interpreting link", permalink);
     if (permalink === null) {
         // We don't have an anchor in the URL
@@ -99,7 +107,7 @@ function showSubreddit(subreddit: string) {
         })
 }
 
-function showPost(permalink) {
+function showPost(permalink: Permalink) {
     const baseurl = removeTrailingSlash(new URL(`${redditBaseURL}${permalink}`));
     const url = `${baseurl}/.json?limit=75`;
     return axios.get(url).then((response) => {
@@ -114,7 +122,7 @@ function showPost(permalink) {
     });
 }
 
-function permalinkFromURLAnchor(): string | null {
+function permalinkFromURLAnchor(): Permalink | null {
     // Capture the '/r/sub/...' part including the /r/
     const permalink = new URL(document.URL).hash
     if (permalink === "") {
@@ -134,7 +142,7 @@ function removeTrailingSlash(url: URL): URL {
     }
 }
 
-function setURLAnchor(permalink: string, pushState: boolean = true): void {
+function setURLAnchor(permalink: Permalink, pushState: boolean = true): void {
     const url = removeTrailingSlash(new URL(document.URL));
     const newurl = new URL(`${url.protocol}//${url.hostname}${url.pathname}#${permalink}`);
     window.history.pushState({}, '', newurl);
@@ -183,43 +191,60 @@ function displayPosts(responses) {
     postsList.append("That's enough reddit for now. Get back to work!")
 }
 
-type CommentBuilderOptions = {indent: number, ppBuffer: HTMLImageElement[]};
+type CommentBuilderOptions = {indent: number, ppBuffer: HTMLImageElement[], post: Permalink};
 
-function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[], options: CommentBuilderOptions = { indent: 0, ppBuffer: [] }) {
+function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],  {post, indent=0, ppBuffer=[]}: CommentBuilderOptions) {
+    if (listing === undefined || listing.length === 0) {
+        return;
+    }
+
     for (const redditObj of listing) {
         // At the end of the list reddit adds a "more" object
         if (redditObj.kind === "t1") {
-            // t1 is for comments
+            // kind being t1 assures us listing[0] is a SnooComment
+            const comment: SnooComment = redditObj as SnooComment;
             const commentElement = document.createElement("div");
-            if (options.indent > 0) {
+            if (indent > 0) {
                 commentElement.classList.add('replied-comment');
             }
 
             parentElement.appendChild(commentElement);
-
-            const comment: SnooComment = redditObj as SnooComment;
-            const prom: Promise<HTMLElement> = createComment(comment, {ppBuffer: options.ppBuffer, domNode: commentElement})
+            const prom: Promise<HTMLElement> = createComment(comment, {ppBuffer: ppBuffer, domNode: commentElement})
 
             if (comment.data.replies) {
-                displayCommentsRecursive(commentElement, comment.data.replies.data.children, { indent: options.indent + 10, ppBuffer: options.ppBuffer });
+                displayCommentsRecursive(commentElement, comment.data.replies.data.children, {
+                    indent: indent + 10, 
+                    ppBuffer: ppBuffer,
+                    post: post
+                });
             }
 
-            if (options.indent === 0) {
+            if (indent === 0) {
                 parentElement.appendChild(document.createElement('hr'));
             }
-        } else if (redditObj.kind === "more") {
+        } else if (redditObj.kind === "more" && post !== undefined) {
             const data = redditObj as MoreComments;
             const moreElement = document.createElement("span");
             moreElement.classList.add("btn-more");
             if (isDebugMode()) console.log(moreElement, redditObj, listing);
 
             moreElement.addEventListener("click", () => {
-                fetchMoreComments(data.data.id)
+                fetch(`${redditBaseURL}${post}${data.data.id}.json`)
                     .then((response: Response) => { 
                         return response.json()
                     })
-                    .then((data: ApiObj[]) => {    
-                        displayCommentsRecursive(parentElement, data);
+                    .then((data: ApiObj[]) => {
+                        if (data[1] !== undefined && data[1].kind === "Listing") {
+                            const listing = tryAsComment(data[1]);
+                            if (listing !== undefined) {
+                                moreElement.remove();
+                                displayCommentsRecursive(parentElement, listing.children, {
+                                    indent: indent + 10,
+                                    ppBuffer: ppBuffer,
+                                    post: post
+                                });
+                            }
+                        }
                     });
             });
             parentElement.appendChild(moreElement);
@@ -227,17 +252,12 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
     }
 }
 
-async function fetchMoreComments(commentID): Promise<any> {
-    // return fetch(`${redditBaseURL}/r/${sub}/comments/${commentID}/.json`);
-    return Promise.resolve();
-}
-
-function displayComments(commentsData) {
+function displayComments(commentsData, {post}: {post: Permalink}) {
     postSection.classList.add('post-selected');
     postSection.classList.remove('deselected');
 
     const stableInTimeFaceBuffer = facesSideloader.getFaces().slice(0); // Stable-in-time copy of the full array
-    displayCommentsRecursive(postSection, commentsData, { indent: 0, ppBuffer: stableInTimeFaceBuffer });
+    displayCommentsRecursive(postSection, commentsData, { indent: 0, ppBuffer: stableInTimeFaceBuffer, post: post});
 }
 
 function showPostFromData(response: ApiObj) {
@@ -304,7 +324,8 @@ function showPostFromData(response: ApiObj) {
     const postDetails = getPostDetails(response)
     postSection.append(...postDetails)
     postSection.append(document.createElement('hr'))
-    displayComments(comments);
+
+    displayComments(comments, { post: response.data[0].data.children[0].data.permalink });
 }
 
 function getPostDetails(response: any) {
