@@ -237,12 +237,21 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
             }
         } else if (redditObj.kind === "more" && post !== undefined) {
             const data = redditObj as MoreComments;
+            if (data.data.children.length === 0) {
+                // Todo: we have a "more" but the id is '_' and the children are none
+                // yet on reddit there is more children...?
+                // => maybe start asking for "more" on the parent and do a pruning step...?
+                if (isDebugMode()) console.log("Empty 'more' object?", redditObj);
+                break;
+            }
+
             const moreElement = document.createElement("span");
             moreElement.classList.add("btn-more");
             
+            const commentLink = `${redditBaseURL}${post}${data.data.id}`;
             moreElement.addEventListener("click", () => {
                 moreElement.classList.add("waiting");
-                fetch(`${redditBaseURL}${post}${data.data.id}.json`)
+                fetch(`${commentLink}.json`)
                     .catch((e) => {
                         moreElement.classList.remove("waiting");
                         console.error(e);
@@ -254,6 +263,7 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
                         console.error(e);
                     })
                     .then((data: ApiObj[]) => {
+                        if (isDebugMode()) console.log("Got data!", commentLink, data);
                         if (data[1] === undefined || data[1].kind !== "Listing") {
                             console.error(data);
                             return Promise.reject();
