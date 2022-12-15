@@ -207,8 +207,29 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
             if (options.indent === 0) {
                 parentElement.appendChild(document.createElement('hr'));
             }
+        } else if (redditObj.kind === "more") {
+            const data = redditObj as MoreComments;
+            const moreElement = document.createElement("span");
+            moreElement.classList.add("btn-more");
+            if (isDebugMode()) console.log(moreElement, redditObj, listing);
+
+            moreElement.addEventListener("click", () => {
+                fetchMoreComments(data.data.id)
+                    .then((response: Response) => { 
+                        return response.json()
+                    })
+                    .then((data: ApiObj[]) => {    
+                        displayCommentsRecursive(parentElement, data);
+                    });
+            });
+            parentElement.appendChild(moreElement);
         }
     }
+}
+
+async function fetchMoreComments(commentID): Promise<any> {
+    // return fetch(`${redditBaseURL}/r/${sub}/comments/${commentID}/.json`);
+    return Promise.resolve();
 }
 
 function displayComments(commentsData) {
