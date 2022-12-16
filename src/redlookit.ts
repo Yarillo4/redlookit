@@ -40,26 +40,6 @@ const facesSideloader = new HumanFacesSideloader(200); // Side-load 200 faces in
 
 const rng = new Random();
 
-enum ListingDisambiguationError {
-    Malformed = "The listing is critically malformed",
-    Empty = "The listing has no children",
-    WrongKind = "The listing is the wrong kind"
-}
-function tryAsComment(datum: ApiObj): Listing<SnooComment> | Error {
-    const duck = (datum.data as any);
-    if (duck.children === undefined) {
-        return new Error(ListingDisambiguationError.Malformed);
-    } 
-    if (duck.children.length <= 0) {
-        return new Error(ListingDisambiguationError.Empty);
-    }
-    if (duck.children[0].kind !== "t1") {
-        return new Error(ListingDisambiguationError.WrongKind);
-    }
-
-    return duck as Listing<SnooComment>;
-}
-
 type Permalink = string;
 function showRedditLink(permalink: Permalink): boolean {
     const postMatch = permalink.match(/\/?r\/([^/]+?)\/comments\/([^/]+)/);
@@ -237,21 +217,28 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
             }
         } else if (redditObj.kind === "more" && post !== undefined) {
             const data = redditObj as MoreComments;
-            if (data.data.children.length === 0) {
-                // Todo: we have a "more" but the id is '_' and the children are none
-                // yet on reddit there is more children...?
-                // => maybe start asking for "more" on the parent and do a pruning step...?
-                if (isDebugMode()) console.log("Empty 'more' object?", redditObj);
-                break;
-            }
-
             const moreElement = document.createElement("span");
             moreElement.classList.add("btn-more");
             
-            const commentLink = `${redditBaseURL}${post}${data.data.id}`;
+            // Fetch the parent of the "more" listing
+            const parentLink = `${redditBaseURL}${post}${data.data.parent_id.slice(3)}`;
+            /*
+                // We used to fetch the comment directly listed by the "more" listing aka data.data.id
+                // But sometimes 'id' was '_' and no children were listed (despite the fact that there was several on the actual website)
+                // If you go back 1 step in the tree to the parent and circle back to the children this way, however, you 
+                //   get around the bug and the children get properly listed
+                // Couldn't tell you why.
+
+                // If you wish to see the behavior in action, enable this piece of code
+                if (data.data.children.length === 0) {
+                    if (isDebugMode()) console.log("Empty 'more' object?", redditObj);
+                    moreElement.style.backgroundColor = "#ff0000";
+                }
+            */
+            
             moreElement.addEventListener("click", () => {
                 moreElement.classList.add("waiting");
-                fetch(`${commentLink}.json`)
+                fetch(`${parentLink}.json`)
                     .catch((e) => {
                         moreElement.classList.remove("waiting");
                         console.error(e);
@@ -263,26 +250,19 @@ function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],
                         console.error(e);
                     })
                     .then((data: ApiObj[]) => {
-                        if (isDebugMode()) console.log("Got data!", commentLink, data);
-                        if (data[1] === undefined || data[1].kind !== "Listing") {
-                            console.error(data);
-                            return Promise.reject();
-                        }
-
+                        if (isDebugMode()) console.log("Got data!", parentLink, data);
                         moreElement.remove();
 
-                        const listing = tryAsComment(data[1]);
-                        if (listing instanceof Error) {
-                            const error = listing;
-                            if (error.message === ListingDisambiguationError.Empty) {
-                                if (isDebugMode()) console.log("Listing was empty :)", data);
-                                return Promise.resolve();
-                            } else {
-                                return Promise.reject(error.message);
-                            }
+                        // Our type definitions aren't robust enough to go through the tree properly
+                        // We just cop out. Cast as `any` and try/catch.
+                        let replies: Listing<SnooComment>;
+                        try {
+                            replies = (data as any)[1].data.children[0].data.replies.data
+                        } catch (e) {
+                            return Promise.reject(e);
                         }
 
-                        displayCommentsRecursive(parentElement, listing.children, {
+                        displayCommentsRecursive(parentElement, replies.children, {
                             indent: indent + 10,
                             ppBuffer: ppBuffer,
                             post: post
