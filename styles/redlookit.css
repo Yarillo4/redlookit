@@ -310,6 +310,17 @@ button {
     color: var(--border-color);
 }
 
+.comment .expand {
+    transition: all .20s ease;
+    background-color: #e6e6e6;
+    padding: 2px 1px;
+    border-radius: 3px 0 0 3px;
+    width: 11px;
+}
+
+.comment .usertext {
+}
+
 .usertext h6 {
     text-decoration: underline;
 }

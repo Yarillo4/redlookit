@@ -499,13 +499,28 @@ type CreateCommentOptions = {
     ppBuffer: HTMLImageElement[],
     domNode?: HTMLElement
 };
-async function createComment(commentData: SnooComment, options: CreateCommentOptions={ppBuffer: []}): Promise<HTMLElement> {
-    if (options.domNode === undefined) {
-        options.domNode = document.createElement('div');
+async function createComment(commentData: SnooComment, {domNode, ppBuffer=[]}: CreateCommentOptions): Promise<HTMLElement> {
+    if (domNode === undefined) {
+        domNode = document.createElement('div');
     }
-    options.domNode.id = commentData.data.id;
-    options.domNode.classList.add("usertext");
-    options.domNode.classList.add("comment");
+
+    domNode.classList.add("comment");
+    domNode.classList.add("row");
+
+    // Make collapsible
+    const collapser = document.createElement("a");
+    collapser.classList.add("expand");
+    collapser.classList.add("col-auto");
+    collapser.addEventListener("click", () => {
+
+    });
+    domNode.appendChild(collapser);
+
+    const commentElement = document.createElement('div');
+    commentElement.id = commentData.data.id;
+    commentElement.classList.add("usertext");
+    commentElement.classList.add("col");
+    domNode.appendChild(commentElement);
 
     // Author parent div
     const author = document.createElement('div');
@@ -521,7 +536,7 @@ async function createComment(commentData: SnooComment, options: CreateCommentOpt
     author.appendChild(pfpPlaceHolder);
 
     // Real Profile pic
-    createProfilePicture(commentData, ppSize, options.ppBuffer).then( (generatedPfp) => {
+    createProfilePicture(commentData, ppSize, ppBuffer).then( (generatedPfp) => {
         author.replaceChild(generatedPfp, pfpPlaceHolder);
     });
 
@@ -567,8 +582,8 @@ async function createComment(commentData: SnooComment, options: CreateCommentOpt
     const commentText = document.createElement('div');
     commentText.insertAdjacentHTML('beforeend', decodeHtml(commentData.data.body_html));
 
-    options.domNode.prepend(author, commentText);
-    return options.domNode
+    commentElement.prepend(author, commentText);
+    return domNode;
 }
 
 type SerializedHTML = string;
