@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,6 +10,8 @@
     <link rel="icon" href="https://outlook.office.com/mail/favicon.ico">
     <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-core/11.0.0/css/fabric.min.css" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6705733956299645" crossorigin="anonymous"></script> -->
+    <!-- <link rel="stylesheet" href="styles/fabric-icons.css"> -->
     <style>
         /*
         Your use of the content in the files referenced here is subject to the terms of the license at https://aka.ms/fabric-assets-license
@@ -35,6 +37,15 @@
         .ms-Icon--Tag:before { content: "\E8EC"; }
 
     </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-MRXY5LSS9D"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-MRXY5LSS9D');
+</script>
 </head>
 <body class="dark roomy">
     <nav class="navbar">
@@ -82,6 +93,9 @@
             <button class="settings-button">
                 <i class="ms-Icon ms-Icon--Settings" aria-hidden="true"></i>
             </button>
+            <!-- <button dir="ltr">
+                <i class="ms-Icon ms-Icon--Help" aria-hidden="true"></i>
+            </button> -->
             <button>
                 <i class="ms-Icon ms-Icon--Lightbulb" aria-hidden="true"></i>
             </button>
@@ -688,6 +702,15 @@
                                 <button class="sort-button all-time">All Time</button>
                             </div>
                         </span>
+                        <!-- <div class="dropdown post-header-button" style="float:right;">
+                            <button class="dropbtn">Filter</button>
+                            <div class="dropdown-content">
+                              <a href="#">All</a>
+                              <a href="#">Hot</a>
+                              <a href="#">Top</a>
+                              <a href="#">Rising</a>
+                            </div>
+                        </div> -->
                     </div>
                     <div class="scrollable" id="posts">
                     </div>
@@ -695,12 +718,16 @@
         
                 <section class="reddit-post scrollable deselected">
                     <img src="https://outlook-1.cdn.office.net/owamail/20210711001.05/resources/images/illustration_mail-1d0febde089f910786f330f638ffa7a1.svg" alt="">
+                    <!-- <img src="https://github.com/one-loop/redlookit/blob/main/Assets/ending-screen.jpg?raw=true" alt="that's all folks" style="max-width: 100%"> -->
                     <p class="get-started"><b>Select a post to view</b></p>
                     <p class="get-started">Nothing is selected</p>
                 </section>
             </div>
         </div>
     </main>
+
+    <!-- <section class="">
+    </section> -->
     
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <script>
