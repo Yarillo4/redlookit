@@ -188,15 +188,15 @@ button {
     align-items: stretch;
 }
 .post-image {
-    max-width: 70%;
-    max-height: 70%;
+    max-width: 70vh;
+    max-height: 70vh;
     margin: auto;
     display: block;
     margin-bottom: 20px;
 }
 .post-video {
-    max-width: 70%;
-    max-height: 70%;
+    max-width: 70vh;
+    max-height: 70vh;
     margin: auto;
     display: block;
     margin-bottom: 20px;
