@@ -642,7 +642,7 @@ button {
     stroke-width: 15px;
 }
 
-.favorite-icon.favorited {
+.favorited > * {
     fill: var(--new-msg);
 }
 
