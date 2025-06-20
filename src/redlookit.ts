@@ -191,7 +191,7 @@ let subredditDetailsContainer = document.createElement('div');
 let headerButtons = document.querySelector('.header-buttons') as HTMLElement;
 let scrollable = document.querySelector('#posts.scrollable') as HTMLElement;
 let favoriteIcon = document.createElement('span');
-let ignoreIcon = document.createElement('span');
+let blockIcon = document.createElement('span');
 
 function cloneTemplate<T>(selector) {
     const template = document.querySelector<HTMLTemplateElement>(selector);
@@ -202,7 +202,7 @@ function cloneTemplate<T>(selector) {
     return null;
 }
 
-function displayPosts(responses: Post[], subreddit, subredditInformation: SubredditDetails = {
+function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditDetails = {
     "title": null,
     "icon_img": '',
     "community_icon": '',
@@ -306,7 +306,11 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
         subredditInfoContainer.classList.add('subreddit-info');
         subredditInfoHeading.innerHTML = subredditInformation.title;
         subredditInfoHeading.classList.add('subreddit-info-heading');
-        ignoreIcon.setAttribute('data-subreddit', subreddit);
+        blockIcon.setAttribute('data-subreddit', subredditInformation.display_name || subreddit);
+        blockIcon.classList.add("block-btn")
+        blockIcon.innerHTML = isBlocked(subreddit) ? '+' : '-';
+        blockIcon.title = isBlocked(subreddit) ? 'Unblock subreddit' : 'Block subreddit';
+
         favoriteIcon.id = 'favorite-btn';
         favoriteIcon.innerHTML = '<svg width="16" height="16" class="favorite-icon" viewBox="0 0 176 168" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M89.7935 6.93173L111.277 50.4619C113.025 54.0036 116.404 56.4584 120.312 57.0264L168.351 64.0068C169.991 64.2451 170.646 66.2611 169.459 67.4182L134.698 101.302C131.87 104.058 130.579 108.031 131.247 111.923L139.453 159.767C139.733 161.401 138.018 162.647 136.551 161.876L93.5841 139.287C90.0882 137.449 85.9118 137.449 82.4159 139.287L39.4491 161.876C37.9818 162.647 36.267 161.401 36.5472 159.768L44.7531 111.923C45.4208 108.031 44.1302 104.059 41.302 101.302L6.54106 67.4182C5.35402 66.2611 6.00905 64.2451 7.64948 64.0068L55.6879 57.0264C59.5964 56.4584 62.9752 54.0036 64.7231 50.4619L86.2065 6.93174C86.9402 5.44523 89.0599 5.44525 89.7935 6.93173Z"/></svg>'
         favoriteIcon.setAttribute('data-subreddit', subreddit);
@@ -330,7 +334,7 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
         subredditIconContainer.append(subredditInfoIcon);
         subredditIconContainer.classList.add('subreddit-icon-container');
         subredditDetailsContainer.classList.add('subreddit-details-container');
-        subredditInfoContainer.append(subredditIconContainer, subredditDetailsContainer, favoriteIcon);
+        subredditInfoContainer.append(subredditIconContainer, subredditDetailsContainer, favoriteIcon, blockIcon);
         headerButtons.parentNode.insertBefore(subredditInfoContainer, headerButtons);
         // scrollable.style.height = `calc(100vh - ${calcHeight})`;
         if (document.body.classList.contains('compact')) {
@@ -362,22 +366,25 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
         subredditInfoContainer.style.zIndex = 'auto'
     }
 
-    for (let response of responses) {
+    for (let post of posts) {
+        if (isBlocked(post.data.subreddit)) {
+            continue;
+        }
         let section: HTMLButtonElement = document.createElement('button');
         section.classList.add('post');
 
         let title = document.createElement('span');
-        let titleText = response.data.title;
+        let titleText = post.data.title;
         title.append(titleText);
-        section.title = response.data.title;
+        section.title = post.data.title;
         title.classList.add('title');
 
         let subreddit = document.createElement('span');
-        subreddit.append(response.data.subreddit_name_prefixed);
+        subreddit.append(post.data.subreddit_name_prefixed);
         subreddit.classList.add('subreddit');
 
         const upvotes = cloneTemplate<HTMLSpanElement>('#upvote-template');
-        upvotes.querySelector<HTMLSpanElement>('span.upvotes').innerHTML = `${response.data.score.toLocaleString()}`;
+        upvotes.querySelector<HTMLSpanElement>('span.upvotes').innerHTML = `${post.data.score.toLocaleString()}`;
         upvotes.classList.add('post-data');
         const downvotes = cloneTemplate<HTMLSpanElement>('#downvote-template');
         upvotes.appendChild(downvotes);
@@ -392,7 +399,7 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
         profile.style.backgroundColor = ppColor;
         profile.append(ppInitials);
         section.append(profile, title, subreddit, upvotes);
-        if (response.data.subreddit_name_prefixed.toLowerCase() == 'r/crappydesign') {
+        if (post.data.subreddit_name_prefixed.toLowerCase() == 'r/crappydesign') {
             section.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`
             section.style.zIndex =  `${Math.floor(Math.random() * (10 - 1 + 1) + 1)}`
             profile.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
@@ -402,11 +409,11 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
         section.addEventListener('click', () => {
             document.querySelector(".focused-post")?.classList.remove("focused-post");
             section.classList.add("focused-post");
-            setURLAnchor(response.data.permalink);
-            showPost(response.data.permalink).catch( (reason) => {
+            setURLAnchor(post.data.permalink);
+            showPost(post.data.permalink).catch( (reason) => {
                 console.error("There was a problem drawing this post on the page", {
                     "reason": reason,
-                    "permalink": response.data.permalink,
+                    "permalink": post.data.permalink,
                 });
             });
         })
@@ -425,6 +432,65 @@ favoriteIcon.addEventListener('click', function() {
     } else {
         btn.classList.remove('favorited');
         unFavoriteSubreddit(subreddit);
+    }
+})
+
+function updateBlockedSubsList() {
+    const ulElement = document.getElementById('blocked-subs');
+    ulElement.innerHTML = "";
+    const blockList = localStorage.getItem('blockedSubreddits');
+    if (blockList) {
+        const blockedSubreddits = blockList.split(',');
+        for (const subreddit of blockedSubreddits) {
+            const item = cloneTemplate<HTMLUListElement>('#blocklist-item');
+            item.querySelector('span.blocklist-item-name').innerHTML = subreddit;
+            item.querySelector('button').addEventListener('click', () => {
+                unblock(subreddit);
+                item.remove();
+            });
+            ulElement.appendChild(item);
+        }
+    }
+}
+
+function isBlocked(subreddit) {
+    return localStorage.getItem('blockedSubreddits') !== null && localStorage.getItem('blockedSubreddits').toLowerCase().split(',').includes(subreddit.toLowerCase());
+}
+
+function block(subreddit) {
+    let blockedSubreddits = localStorage.getItem('blockedSubreddits');
+    if (blockedSubreddits) {
+        localStorage.setItem('blockedSubreddits', `${blockedSubreddits},${subreddit}`);
+    } else {
+        localStorage.setItem('blockedSubreddits', subreddit);
+    }
+    updateBlockedSubsList();
+    if (isDebugMode()) console.log(`Blocked ${subreddit}`);
+}
+
+function unblock(subreddit) {
+    const blockedSubreddits = localStorage.getItem('blockedSubreddits');
+    if (blockedSubreddits) {
+        const asArray = blockedSubreddits.split(',');
+        localStorage.setItem('blockedSubreddits', asArray.filter((s) => s.toLowerCase() !== subreddit.toLowerCase()).join(','));
+        updateBlockedSubsList();
+        if (isDebugMode()) console.log(`Unblocked ${subreddit}`);
+    }
+}
+
+blockIcon.addEventListener('click', (event) => {
+    const blockBtn = event.target as any
+    if (blockBtn instanceof HTMLSpanElement) {
+        const subreddit = blockBtn.getAttribute('data-subreddit');
+        if (isBlocked(subreddit)) {
+            unblock(subreddit);
+            blockBtn.innerHTML = '-';
+            blockBtn.title = 'Block subreddit';
+        } else {
+            block(subreddit);
+            blockBtn.innerHTML = '+';
+            blockBtn.title = 'Unblock subreddit';
+        } 
     }
 })
 
@@ -965,8 +1031,19 @@ function getPostDetails(response: any) {
     numComments.classList.add('post-detail-info')
     let author = document.createElement('span');
     author.append(`Posted by u/${response[0].data.children[0].data.author}`);
+    
+    const blockSubreddit = document.createElement('span');
+    blockSubreddit.innerHTML = 'Block subreddit'
+    blockSubreddit.classList.add('post-detail-info')
+    blockSubreddit.style.cursor = "help"
+    blockSubreddit.title = `Block ${response[0].data.children[0].data.subreddit}`;
+    blockSubreddit.addEventListener('click', () => {
+        block(response[0].data.children[0].data.subreddit);
+    });
+
     author.classList.add('post-detail-info')
-    return [upvotes, subreddit, numComments, author];
+
+    return [upvotes, subreddit, numComments, author, blockSubreddit];
 }
 
 async function generateGnomePic(): Promise<HTMLImageElement> {
@@ -1364,15 +1441,16 @@ document.addEventListener("mouseup", function(){
     document.removeEventListener("mousemove", resize, false);
 }, false);
 
-let settingsButton: HTMLElement = strictQuerySelector('.settings-button');
-let settingsPanel: HTMLElement = strictQuerySelector('.settings-panel');
+const settingsButton: HTMLElement = strictQuerySelector('.settings-button');
+const settingsPanel: HTMLElement = strictQuerySelector('.settings-panel');
 
 settingsButton.addEventListener('click', () => {
     profilePanel.classList.remove('profile-panel-show');
+    updateBlockedSubsList();
     settingsPanel.classList.toggle('settings-panel-show');
 })
 
-let closeButton: HTMLElement = strictQuerySelector('.close-settings');
+const closeButton: HTMLElement = strictQuerySelector('.close-settings');
 
 closeButton.addEventListener('click', () => {
     settingsPanel.classList.remove('settings-panel-show');
