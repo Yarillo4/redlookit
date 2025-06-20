@@ -349,7 +349,19 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
             scrollable.style.height = 'calc(100vh - 178px)';
         }
     }
-    if (subreddit.toLowerCase() == 'crappydesign') {document.body.style.fontFamily = '"Comic Sans MS", "Comic Sans", cursive'; subredditInfoContainer.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`; subredditInfoContainer.style.backgroundSize = '350px'; subredditInfoContainer.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`; subredditInfoContainer.style.zIndex = '10'} else { document.body.style.fontFamily = 'Segoe UI'; subredditInfoContainer.style.background = 'var(--background-color-2)'; subredditInfoContainer.style.transform = 'none'; subredditInfoContainer.style.zIndex = 'auto'}
+    if (subreddit.toLowerCase() == 'crappydesign') {
+        document.body.style.fontFamily = '"Comic Sans MS", "Comic Sans", cursive';
+        subredditInfoContainer.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
+        subredditInfoContainer.style.backgroundSize = '350px';
+        subredditInfoContainer.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`;
+        subredditInfoContainer.style.zIndex = '10'
+    } else {
+        document.body.style.fontFamily = 'Segoe UI';
+        subredditInfoContainer.style.background = 'var(--background-color-2)';
+        subredditInfoContainer.style.transform = 'none';
+        subredditInfoContainer.style.zIndex = 'auto'
+    }
+
     for (let response of responses) {
         let section: HTMLButtonElement = document.createElement('button');
         section.classList.add('post');
@@ -386,7 +398,6 @@ function displayPosts(responses: Post[], subreddit, subredditInformation: Subred
             profile.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
 
         }
-        // section.id = response.data.url;
 
         section.addEventListener('click', () => {
             document.querySelector(".focused-post")?.classList.remove("focused-post");
