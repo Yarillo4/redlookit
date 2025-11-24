@@ -812,6 +812,15 @@ async function fetchData<T>(url: string): Promise<T> {
     return data;
 }
 
+function isValidURL(url: string) {
+    try {
+        const a = new URL(url);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
 interface subredditQuery {
     sortType: null | "all" | "hour" | "day" | "week" | "month" | "year"
     tab: "hot" | "new" | "rising" | "controversial" | "top" | "gilded"
@@ -938,6 +947,13 @@ function showPostFromData(response: ApiObj) {
         };
         const crosspost: PostData | undefined = (post.data.crosspost_parent_list || [])[0];
         link.href = crosspost?.permalink || post.data.url_overridden_by_dest;
+
+        const urlCandidate = crosspost?.permalink || post.url_overridden_by_dest;
+        if (isValidURL(urlCandidate)) {
+            link.href = urlCandidate;
+        } else {
+            link.href = `${redditBaseURL}${urlCandidate}`;
+        }
         link.innerText = crosspost?.title;
         link.target = "_blank";
         link.classList.add('post-link');
