@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack --mode=production --define-process-env-node-env=production",
     "dev": "webpack --mode=development",
+    "tsc": "tsc",
     "prod": "webpack --mode=production --define-process-env-node-env=production",
     "watch": "webpack --watch",
     "deploy": "gh-pages -d public"

@@ -58,8 +58,7 @@ module.exports = () => {
         
     } else {
         config.mode = 'development';
-        config.devtool = 'eval-source-map';
-
+        config.devtool = 'inline-source-map';
     }
     return config;
 };
