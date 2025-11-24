@@ -1615,15 +1615,15 @@ profileButton.addEventListener('click', () => {
 
 
 document.addEventListener('click', function handleClickOutsideBox(event) {
-	let searchResults = document.querySelector('.search-results');
+    let searchResults = document.querySelector('.search-results');
     // let sortMenu = document.querySelector('.sort-menu') as HTMLElement;
     // let sortTopMenu = document.querySelector('.sort-top-menu') as HTMLElement;
 
     let target = event.target as Node;
 
     // hdie search results/open menus if user clicks out of it
-	if (!searchResults.contains(target)) {hideSearchResults()}
-	// if (!sortMenu.contains(target)) {sortMenu.style.display = 'none';}
+    if (!searchResults.contains(target)) {hideSearchResults()}
+    // if (!sortMenu.contains(target)) {sortMenu.style.display = 'none';}
     // if (!sortTopMenu.contains(target)) {sortTopMenu.style.display = 'none';}
 });
 
@@ -1633,8 +1633,8 @@ let inputBox = document.querySelector(".search") as HTMLInputElement;
 if (subredditName) {
     subredditName.addEventListener('input', function() {
     // searchBoxClicked();
-	// console.log(inputBox.value)
-	if (subredditName.value.length > 0) {
+    // console.log(inputBox.value)
+    if (subredditName.value.length > 0) {
         if (subredditName.value.startsWith('r/')) {
             let results = subreddits.filter(sub => sub.subreddit.toLowerCase().includes(inputBox.value.toLowerCase().slice(2)));
             displaySearchResults(results.slice(0, 5))
@@ -1642,10 +1642,10 @@ if (subredditName) {
             let results = subreddits.filter(sub => sub.subreddit.toLowerCase().includes(inputBox.value.toLowerCase()));
             displaySearchResults(results.slice(0, 5))
         }
-		// console.log(results.slice(0, 5));
-	} else {
-		hideSearchResults()
-	}
+        // console.log(results.slice(0, 5));
+    } else {
+        hideSearchResults()
+    }
   });
 //   subredditName.addEventListener('click', function() {
 //     // searchBoxClicked();
@@ -1700,12 +1700,12 @@ if (addSubreddit) {
 
 
 function hideSearchResults() {
-	let searchResults = document.querySelector('.search-results') as HTMLElement;
+    let searchResults = document.querySelector('.search-results') as HTMLElement;
     searchResults.style.display = 'none';
 }
 
 function numberFormatter(number) {
-	let num = parseInt(number)
+    let num = parseInt(number)
     return Math.abs(num) > 999999 ? Math.sign(num)*Number((Math.abs(num)/1000000).toFixed(1)) + 'm' : Math.sign(num)*Number((Math.abs(num)/1000).toFixed(1)) + 'k'
 }
 
