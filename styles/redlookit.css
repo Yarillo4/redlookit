@@ -522,8 +522,9 @@ button {
 }
 
 .post-link-container-row>img {
-    width: 75px;
     height: 75px;
+    object-fit: cover;
+    object-position: center;
     border-radius: 3px;
     margin-right: 15px;
 }
@@ -1424,6 +1425,8 @@ aside.menu-selector {
     margin-top: 8px;
     font-weight: 100 !important;
     padding-right: 19px;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .menu-selector button {
