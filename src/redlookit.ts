@@ -1053,6 +1053,7 @@ function getPostDetails(response: any) {
     blockSubreddit.style.cursor = "help"
     blockSubreddit.title = `Block ${response[0].data.children[0].data.subreddit}`;
     blockSubreddit.addEventListener('click', () => {
+        blockSubreddit.remove();
         block(response[0].data.children[0].data.subreddit);
     });
 
