@@ -882,7 +882,7 @@ function embedRedditImages(html: string): string {
     for (const link of linksInside) {
         if (link !== null && link.href !== "") {
             const url = new URL(link.href)
-            if (url.host == "preview.redd.it") {
+            if (url.host == "preview.redd.it" || url.host == "i.redd.it") {
                 const img = createImage(link.href)
                 if (img) {
                     link.replaceWith(img);
