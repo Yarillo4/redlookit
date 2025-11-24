@@ -521,7 +521,7 @@ function favoriteSubreddit(subreddit) {
 
 function unFavoriteSubreddit(subreddit) {
     // console.log(`Unfavoriting r/${subreddit}`);
-    document.querySelector(`.your-subreddits .subreddit.button#${subreddit}`).remove();
+    document.getElementById(subreddit).remove();
     let savedSubreddits = localStorage.getItem('savedSubreddits');
     let newSavedSubreddits = savedSubreddits.split(',').filter(e => e !== subreddit);
     // console.log(newSavedSubreddits);
