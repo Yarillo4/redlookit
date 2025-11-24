@@ -844,33 +844,33 @@ async function fetchAndDisplaySub({sortType=null, tab="hot", subreddit}: subredd
     }
 }
 
-function isCrosspost(post: Post) {
-    return (typeof post.data.crosspost_parent_list === "object") && post.data.crosspost_parent_list.length > 0;
+function isCrosspost(post: PostData) {
+    return (typeof post.crosspost_parent_list === "object") && post.crosspost_parent_list.length > 0;
 }
 
-function isImage(post: Post) {
+function isImage(post: PostData) {
     if (isCrosspost(post)) {
         return false;
     }
 
-    if (post.data.post_hint === 'image' || post.data.domain === "i.redd.it") {
+    if (post.post_hint === 'image' || post.domain === "i.redd.it") {
         return true;
     }
 
-    if (post.data.url_overridden_by_dest !== undefined) {
-        const url = new URL(post.data.url_overridden_by_dest);
+    if (post.url_overridden_by_dest !== undefined) {
+        const url = new URL(post.url_overridden_by_dest);
         return url.host === "i.redd.it";
     }
 
     return false;
 }
 
-function isSelfPost(post: Post) {
-    return post.data.is_self;
+function isSelfPost(post: PostData) {
+    return post.is_self;
 }
 
-function hasSelfText(post: Post) {
-    return typeof post.data.selftext == "string" && post.data.selftext !== "";
+function hasSelfText(post: PostData) {
+    return typeof post.selftext == "string" && post.selftext !== "";
 }
 
 function createImage(src: string) {
@@ -881,6 +881,29 @@ function createImage(src: string) {
     image.src = src;
     image.classList.add('post-image');
     return image
+}
+
+function renderThumbnail(post: PostData): HTMLImageElement {
+    const thumbnail = document.createElement('img');
+    console.log(post.preview);
+    if (!post.preview) {
+        thumbnail.src = post.thumbnail;
+        return thumbnail
+    }
+
+    // Find the smallest suitable resolution
+    function choosePreview(preview) {
+        for (const resolution of preview.resolutions) {
+            if (resolution.height >= 75) {
+                return resolution;
+            }
+        }
+        return preview.source;
+    }
+    const preview = choosePreview(post.preview.images[0]);
+    thumbnail.src = decodeHTML(preview.url);
+    console.log("thumbnail", thumbnail);
+    return thumbnail;
 }
 
 function embedRedditImages(html: string): string {
@@ -903,15 +926,102 @@ function embedRedditImages(html: string): string {
     return virtualElement.innerHTML;
 }
 
+function renderPost(post: PostData): HTMLDivElement {
+    const container = document.createElement('div');
+    container.classList.add('post-contents')
+
+    if (isCrosspost(post)) {
+        if (isDebugMode()) console.log("Post is crosspost");
+        const row = document.createElement('div');
+        container.appendChild(row);
+        const thumbnail = renderThumbnail(post);
+        row.append(thumbnail);
+        const link = document.createElement('a');
+        row.append(link);
+
+        const crosspost: PostData | undefined = (post.crosspost_parent_list || [])[0];
+
+        const urlCandidate = crosspost?.permalink || post.url_overridden_by_dest;
+        if (isValidURL(urlCandidate)) {
+            link.href = urlCandidate;
+        } else {
+            link.href = `${redditBaseURL}${urlCandidate}`;
+        }
+        link.innerText = crosspost?.title;
+        link.target = "_blank";
+        link.classList.add('post-link');
+        container.classList.add('post-link-container')
+        row.classList.add('post-link-container-row')
+        const xPost = renderPost(crosspost);
+        container.appendChild(xPost);
+        return container;
+    }
+
+    if (isImage(post)) {
+        if (isDebugMode()) console.log("Post is image");
+        const image = createImage(post.url_overridden_by_dest);
+        container.append(image);
+    } 
+    else if (isSelfPost(post)) {
+        if (isDebugMode()) console.log("Post is self post");
+    } 
+    else {
+        if (isDebugMode()) console.log("Post is something else");
+        const row = document.createElement('div');
+        container.append(row)
+        const thumbnail = document.createElement('img');
+        const link = document.createElement('a');
+
+        thumbnail.src = post.thumbnail;
+        thumbnail.onerror = () => {
+            thumbnail.src = 'https://img.icons8.com/3d-fluency/512/news.png';
+        };
+        link.href = post.url_overridden_by_dest;
+        link.innerText = post.title;
+        link.target = "_blank";
+        link.classList.add('post-link');
+        row.append(thumbnail);
+        row.append(link);
+        row.classList.add('post-link-container-row')
+        container.classList.add('post-link-container')
+    }
+
+    if (hasSelfText(post)) {
+        if (isDebugMode()) console.log("Post has self text");
+        const selfpostHtml = embedRedditImages(decodeHTML(post.selftext_html));
+        const selftext = document.createElement('div');
+        selftext.innerHTML = selfpostHtml;
+        selftext.classList.add("usertext");
+    
+        container.append(selftext);
+    }
+
+    const redditVideo = post.secure_media?.reddit_video;
+    if (redditVideo !== undefined) {
+        if (isDebugMode()) console.log("Post has video");
+        const video = document.createElement('video');
+        video.classList.add('post-video');
+        video.setAttribute('controls', '')
+        const source = document.createElement('source');
+        source.src = post.secure_media.reddit_video.fallback_url;
+        video.appendChild(source);
+        if (localStorage.getItem('hideMedia') == 'false' || localStorage.getItem('hideMedia') == null) {
+            container.append(video);
+        }
+    }
+
+    return container;
+}
+
 function showPostFromData(response: ApiObj) {
     try {
         // reset scroll position when user clicks on a new post
         let redditPost: HTMLElement = strictQuerySelector('.reddit-post');
         redditPost.scrollTop = 0;
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
     }
-    
+
     const comments: SnooComment[] = response[1].data.children;
     const post: Post = response[0].data.children[0];
 
@@ -928,94 +1038,8 @@ function showPostFromData(response: ApiObj) {
     title.classList.add('post-section-title');
     postSection.append(title);
 
-    const container = document.createElement('div');
-    container.classList.add('post-contents')
+    let container = renderPost(post.data);
     postSection.append(container);
-
-    if (isCrosspost(post)) {
-        if (isDebugMode()) console.log("Post is crosspost");
-        const row = document.createElement('div');
-        container.appendChild(row);
-        const thumbnail = document.createElement('img');
-        row.append(thumbnail);
-        const link = document.createElement('a');
-        row.append(link);
-
-        thumbnail.src = post.data.preview?.images[0].source.url || post.data.thumbnail;
-        thumbnail.onerror = () => {
-            thumbnail.src = 'https://img.icons8.com/3d-fluency/512/news.png';
-        };
-        const crosspost: PostData | undefined = (post.data.crosspost_parent_list || [])[0];
-        link.href = crosspost?.permalink || post.data.url_overridden_by_dest;
-
-        const urlCandidate = crosspost?.permalink || post.url_overridden_by_dest;
-        if (isValidURL(urlCandidate)) {
-            link.href = urlCandidate;
-        } else {
-            link.href = `${redditBaseURL}${urlCandidate}`;
-        }
-        link.innerText = crosspost?.title;
-        link.target = "_blank";
-        link.classList.add('post-link');
-        container.classList.add('post-link-container')
-        row.classList.add('post-link-container-row')
-        const image = createImage(crosspost.url_overridden_by_dest);
-        if (image) {
-            container.append(image);
-        }
-    }
-    else if (isImage(post)) {
-        if (isDebugMode()) console.log("Post is image");
-        const image = createImage(post.data.url_overridden_by_dest);
-        container.append(image);
-    } 
-    else if (isSelfPost(post)) {
-        if (isDebugMode()) console.log("Post is self post");
-    } 
-    else {
-        if (isDebugMode()) console.log("Post is something else");
-        const row = document.createElement('div');
-        container.append(row)
-        const thumbnail = document.createElement('img');
-        const link = document.createElement('a');
-
-        thumbnail.src = post.data.thumbnail;
-        thumbnail.onerror = () => {
-            thumbnail.src = 'https://img.icons8.com/3d-fluency/512/news.png';
-        };
-        link.href = post.data.url_overridden_by_dest;
-        link.innerText = titleText;
-        link.target = "_blank";
-        link.classList.add('post-link');
-        row.append(thumbnail);
-        row.append(link);
-        row.classList.add('post-link-container-row')
-        container.classList.add('post-link-container')
-    }
-
-    if (hasSelfText(post)) {
-        if (isDebugMode()) console.log("Post has self text");
-        const selfpostHtml = embedRedditImages(decodeHTML(post.data.selftext_html));
-        const selftext = document.createElement('div');
-        selftext.innerHTML = selfpostHtml;
-        selftext.classList.add("usertext");
-    
-        container.append(selftext);
-    }
-
-    const redditVideo = post.data?.secure_media?.reddit_video;
-    if (redditVideo !== undefined) {
-        if (isDebugMode()) console.log("Post has video");
-        const video = document.createElement('video');
-        video.classList.add('post-video');
-        video.setAttribute('controls', '')
-        const source = document.createElement('source');
-        source.src = post.data.secure_media.reddit_video.fallback_url;
-        video.appendChild(source);
-        if (localStorage.getItem('hideMedia') == 'false' || localStorage.getItem('hideMedia') == null) {
-            container.append(video);
-        }
-    }
     
     const postDetails = getPostDetails(response)
     postSection.append(...postDetails)
