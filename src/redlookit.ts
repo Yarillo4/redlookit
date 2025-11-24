@@ -51,7 +51,7 @@ function showRedditLink(permalink: Permalink): boolean {
         // The anchor points to a post
         showSubreddit(postMatch[1]);
         clearPost();
-        showPost(permalink).catch( (reason: unknown) => {
+        renderRedditLink(permalink).catch( (reason: unknown) => {
             console.error("There was a problem drawing this post on the page", {
                 "reason": reason,
                 "permalink": permalink,
@@ -80,7 +80,7 @@ function showRedditPageOrDefault(permalink: Permalink | null) {
         // We don't have an anchor in the URL
         showSubreddit("popular");
         if (isDebugMode()) {
-            showPost(`/r/test/comments/z0yiof/formatting_test/`).catch((reason: unknown) => {
+            renderRedditLink(`/r/test/comments/z0yiof/formatting_test/`).catch((reason: unknown) => {
                 console.error("There was a problem drawing the test post on the page", {
                     "reason": reason,
                 });
@@ -119,7 +119,7 @@ async function showSubreddit(subreddit: string) {
     }
 }
 
-async function showPost(permalink: Permalink) {
+async function renderRedditLink(permalink: Permalink) {
     const baseurl = removeTrailingSlash(new URL(`${redditBaseURL}${permalink}`));
     const url = `${baseurl}/.json?limit=75`;
     try {
@@ -409,7 +409,7 @@ function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditD
             document.querySelector(".focused-post")?.classList.remove("focused-post");
             section.classList.add("focused-post");
             setURLAnchor(post.data.permalink);
-            showPost(post.data.permalink).catch( (reason) => {
+            renderRedditLink(post.data.permalink).catch( (reason) => {
                 console.error("There was a problem drawing this post on the page", {
                     "reason": reason,
                     "permalink": post.data.permalink,
