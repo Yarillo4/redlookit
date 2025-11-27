@@ -88,8 +88,8 @@ function showRedditPageOrDefault(permalink: Permalink | null) {
         }
     } else {
         // We have an anchor in the URL
-        const itWorked = showRedditLink(permalink);
-        if (!itWorked) {
+        const worked = showRedditLink(permalink);
+        if (!worked) {
             // The anchor pointed to something we do not support
             showSubreddit("popular");
         }
@@ -1105,7 +1105,7 @@ async function generateGnomePic(): Promise<HTMLImageElement> {
 }
 
 // noinspection JSUnusedLocalSymbols
-async function generateTextPic(commentData: SnooComment, size: number): Promise<HTMLSpanElement> {
+async function generateTwoLettersAvatar(commentData: SnooComment, size: number): Promise<HTMLSpanElement> {
     const textPic = document.createElement<"span">("span");
 
     const pseudoRand1 = await rng.random(0, initials.length-1);
@@ -1200,7 +1200,7 @@ async function createProfilePicture(commentData: SnooComment, size: number = 50,
             if ((await rng.random()) < chanceForAFacePic) {
                 return generateFacePic(commentData, ppBuffer);
             } else {
-                return generateTextPic(commentData, size);
+                return generateTwoLettersAvatar(commentData, size);
             }
         }
     }
