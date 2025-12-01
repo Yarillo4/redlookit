@@ -494,7 +494,6 @@ blockIcon.addEventListener('click', (event) => {
 })
 
 function favoriteSubreddit(subreddit) {
-    // console.log(`Favoriting r/${subreddit}`);
     let subredditBtn: HTMLButtonElement = document.createElement<"button">('button');
     subredditBtn.classList.add('subreddit', 'button');
     subredditBtn.id = subreddit;
@@ -504,28 +503,23 @@ function favoriteSubreddit(subreddit) {
         setURLAnchor(`/r/${subredditBtn.id}`);
         showSubreddit(subredditBtn.id);
     })
-    // document.cookie.subreddits.append(subreddit.value);
-    if (localStorage.getItem('savedSubreddits')) {
-        let savedSubreddits = localStorage.getItem('savedSubreddits');
+
+    let savedSubreddits = localStorage.getItem('savedSubreddits');
+    if (savedSubreddits) {
         savedSubreddits += `,${subreddit}`;
         localStorage.setItem('savedSubreddits', savedSubreddits);
-        // console.log(`Favorited r/${subreddit}`)
     } else {
         localStorage.setItem('savedSubreddits', subreddit);
-        // console.log(`Favorited r/${subreddit}`)
     }
     subredditBtn.append('r/' + subreddit);
     subredditSection.append(subredditBtn);
 }
 
 function unFavoriteSubreddit(subreddit) {
-    // console.log(`Unfavoriting r/${subreddit}`);
     document.getElementById(subreddit).remove();
-    let savedSubreddits = localStorage.getItem('savedSubreddits');
-    let newSavedSubreddits = savedSubreddits.split(',').filter(e => e !== subreddit);
-    // console.log(newSavedSubreddits);
+    const savedSubreddits = localStorage.getItem('savedSubreddits');
+    const newSavedSubreddits = savedSubreddits.split(',').filter(e => e.toLowerCase() !== subreddit.toLowerCase());
     localStorage.setItem('savedSubreddits', newSavedSubreddits.toString());
-    // console.log(localStorage.getItem('savedSubreddits'));
 }
 
 type CommentBuilderOptions = {
