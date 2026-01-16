@@ -852,7 +852,13 @@ function isImage(post: PostData) {
     }
 
     if (post.url_overridden_by_dest !== undefined) {
-        const url = new URL(post.url_overridden_by_dest);
+        let url = undefined;
+        try {
+            url = new URL(post.url_overridden_by_dest);
+        } catch (_) {
+            console.log("url_overridden_by_dest contained something weird", post.url_overridden_by_dest);
+            return false;
+        }
         return url.host === "i.redd.it";
     }
 
