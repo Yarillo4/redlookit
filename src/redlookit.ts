@@ -910,15 +910,32 @@ function embedRedditImages(html: string): string {
     const virtualElement = document.createElement("div");
     virtualElement.innerHTML = html;
 
-    const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a")
+    const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a");
     for (const link of linksInside) {
-        if (link !== null && link.href !== "") {
+        if (link !== null && isValidURL(link.href)) {
             const url = new URL(link.href)
             if (url.host == "preview.redd.it" || url.host == "i.redd.it") {
                 const img = createImage(link.href)
                 if (img) {
                     link.replaceWith(img);
                 }
+            }
+        }
+    }
+
+    return virtualElement.innerHTML;
+}
+
+function fixLocalLinks(html: string): string {
+    const virtualElement = document.createElement("div");
+    virtualElement.innerHTML = html;
+
+    const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a");
+    for (const link of linksInside) {
+        if (link !== null && isValidURL(link.href)) {
+            const url = new URL(link.href);
+            if (url.host === "") { // Link to a relative path e.g. /r/something, /, /login
+                link.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}#${url.pathname}`
             }
         }
     }
@@ -1292,7 +1309,7 @@ async function createComment(commentData: SnooComment, options: CreateCommentOpt
 
     const commentText = document.createElement('div');
     commentText.classList.add("comment");
-    commentText.insertAdjacentHTML('beforeend', embedRedditImages(decodeHTML(commentData.data.body_html)));
+    commentText.insertAdjacentHTML('beforeend', fixLocalLinks(embedRedditImages(decodeHTML(commentData.data.body_html))));
 
     options.domNode.prepend(author, commentText);
     return options.domNode
