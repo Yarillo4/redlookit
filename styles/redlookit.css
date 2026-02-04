@@ -696,7 +696,7 @@ button {
 
 .btn-more {
     cursor: pointer;
-    margin-left: 10px;
+    padding-left: 10px;
     width: 100%;
     height: 1.2em;
     border-radius: 0.25em;
