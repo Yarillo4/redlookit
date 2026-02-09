@@ -50,7 +50,13 @@ function showRedditLink(permalink: Permalink): boolean {
 	if (postMatch !== null) {
 		// The anchor points to a post
 		showSubreddit(postMatch[1]).then(() => {
-			focusPostByID(postMatch[2]);
+			const element = document.getElementById(postMatch[2]);
+			console.log("focus", postMatch[2], element, element instanceof HTMLButtonElement);
+			if (element instanceof HTMLButtonElement) {
+				focusPost(element);
+				const postsList = document.getElementById("posts");
+				scrollTo(postsList, element);
+			}
 		});
 		clearPost();
 		renderRedditLink(permalink).catch( (reason: unknown) => {
@@ -122,6 +128,21 @@ async function showSubreddit(subreddit: string) {
 		console.error(e);
 		return Promise.reject(e);
 	}
+}
+
+function scrollTo(container: HTMLElement, target: HTMLElement): void {
+	if (!container || !target) {
+		return;
+	}
+
+	const offsetTop =
+		target.getBoundingClientRect().top -
+		container.getBoundingClientRect().top +
+		container.scrollTop;
+
+	container.scrollTo({
+		top: offsetTop
+	});
 }
 
 async function renderRedditLink(permalink: Permalink) {
@@ -210,15 +231,6 @@ function focusPost(post: HTMLButtonElement) {
 	document.querySelector(".focused-post")?.classList.remove("focused-post");
 	post.classList.add("focused-post");
 	return true;
-}
-function focusPostByID(id: string) {
-	const element = document.getElementById(id);
-	console.log("focusElementByID", id, element);
-	if (element instanceof HTMLButtonElement) {
-		return focusPost(element);
-	} else {
-		return false;
-	}
 }
 
 function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditDetails = {
