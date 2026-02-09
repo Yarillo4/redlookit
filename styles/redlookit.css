@@ -11,6 +11,7 @@
     --text-color: #ffffff;
     --text-color-neg: #333333;
     --background-color: #212121;
+    --background-color-3: #2a2a2a;
     --background-color-2: #333333;
     --placeholder: white;
     --button-focus: #55576b;
@@ -31,7 +32,7 @@
     --menu-selector-button: #21212130;
     --menu-selector-button-focus: #4b4d61;
     --setting-button-hover: #555555;
-    --post-link-hover: #33333370;
+    --post-link-hover: #6d6d6d70;
     /* --menu-buttons-hover: #6b3fff; */
     --profile-panel-background: #1a1a1a;
     --icon: #bdbdbd;
@@ -121,7 +122,7 @@ button {
 
 
 .post:hover {
-    background-color: var(--background-color);
+    background-color: var(--background-color-3);
     cursor: pointer;
 }
 
