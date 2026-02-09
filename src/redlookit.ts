@@ -49,7 +49,9 @@ function showRedditLink(permalink: Permalink): boolean {
 
     if (postMatch !== null) {
         // The anchor points to a post
-        showSubreddit(postMatch[1]);
+        showSubreddit(postMatch[1]).then(() => {
+            focusPostByID(postMatch[2]);
+        });
         clearPost();
         renderRedditLink(permalink).catch( (reason: unknown) => {
             console.error("There was a problem drawing this post on the page", {
@@ -111,11 +113,14 @@ async function showSubreddit(subreddit: string) {
             const subredditData = await fetchData<ApiObj>(`${redditBaseURL}/r/${subreddit}/about.json`);
             const subredditInformation = subredditData.data as SubredditDetails;
             displayPosts(responseData, subreddit, subredditInformation);
+            return Promise.resolve();
         } catch (e) {
             displayPosts(responseData, subreddit);
+            return Promise.resolve();
         }
     } catch (e) {
         console.error(e);
+        return Promise.reject(e);
     }
 }
 
@@ -199,6 +204,21 @@ function cloneTemplate<T>(selector) {
         return deepClone.content.firstElementChild as T;
     }
     return null;
+}
+
+function focusPost(post: HTMLButtonElement) {
+    document.querySelector(".focused-post")?.classList.remove("focused-post");
+    post.classList.add("focused-post");
+    return true;
+}
+function focusPostByID(id: string) {
+    const element = document.getElementById(id);
+    console.log("focusElementByID", id, element);
+    if (element instanceof HTMLButtonElement) {
+        return focusPost(element);
+    } else {
+        return false;
+    }
 }
 
 function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditDetails = {
@@ -369,13 +389,14 @@ function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditD
         if (isBlocked(post.data.subreddit)) {
             continue;
         }
-        let section: HTMLButtonElement = document.createElement('button');
-        section.classList.add('post');
+        let listButtonElement: HTMLButtonElement = document.createElement('button');
+        listButtonElement.classList.add('post');
 
         let title = document.createElement('span');
         let titleText = post.data.title;
         title.append(titleText);
-        section.title = post.data.title;
+        listButtonElement.title = post.data.title;
+        listButtonElement.id = post.data.id;
         title.classList.add('title');
 
         let subreddit = document.createElement('span');
@@ -397,17 +418,16 @@ function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditD
         }
         profile.style.backgroundColor = ppColor;
         profile.append(ppInitials);
-        section.append(profile, title, subreddit, upvotes);
+        listButtonElement.append(profile, title, subreddit, upvotes);
         if (post.data.subreddit_name_prefixed.toLowerCase() == 'r/crappydesign') {
-            section.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`
-            section.style.zIndex =  `${Math.floor(Math.random() * (10 - 1 + 1) + 1)}`
+            listButtonElement.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`
+            listButtonElement.style.zIndex =  `${Math.floor(Math.random() * (10 - 1 + 1) + 1)}`
             profile.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
 
         }
 
-        section.addEventListener('click', () => {
-            document.querySelector(".focused-post")?.classList.remove("focused-post");
-            section.classList.add("focused-post");
+        listButtonElement.addEventListener('click', () => {
+            focusPost(listButtonElement);
             setURLAnchor(post.data.permalink);
             renderRedditLink(post.data.permalink).catch( (reason) => {
                 console.error("There was a problem drawing this post on the page", {
@@ -416,7 +436,7 @@ function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditD
                 });
             });
         })
-        postsList.append(section);
+        postsList.append(listButtonElement);
     }
     postsList.append("That's enough reddit for now. Get back to work!")
 }
