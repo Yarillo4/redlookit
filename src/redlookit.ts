@@ -5,22 +5,22 @@ import {Random, UUID, UUIDFormat} from "./random";
 import {subreddits} from "./subredditList";
 
 function isDebugMode(): boolean {
-    // Won't support ipv6 loopback
-    const url = new URL(document.URL);
-    return url.protocol === "file:" || url.hostname === "localhost" || url.hostname === "127.0.0.1";
+	// Won't support ipv6 loopback
+	const url = new URL(document.URL);
+	return url.protocol === "file:" || url.hostname === "localhost" || url.hostname === "127.0.0.1";
 }
 
 function assert(condition: boolean, msg: string = "Assertion failed"): asserts condition {
-    if (!condition && isDebugMode()) {
-        throw new Error(msg);
-    }
+	if (!condition && isDebugMode()) {
+		throw new Error(msg);
+	}
 }
 
 // A query selector that throws
 function strictQuerySelector<T extends Element>(selector: string): T {
-    const element: T | null = document.querySelector<T>(selector);
-    assert(element !== null, `Failed to find a DOM element matching selector "${selector}"`);
-    return element;
+	const element: T | null = document.querySelector<T>(selector);
+	assert(element !== null, `Failed to find a DOM element matching selector "${selector}"`);
+	return element;
 }
 
 const redditBaseURL: string = "https://old.reddit.com";
@@ -32,157 +32,157 @@ let initials = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
 const menuButton: HTMLElement = strictQuerySelector('.menu');
 const sideNavBar: HTMLElement = strictQuerySelector('.menu-selector')
 menuButton!.addEventListener('click', () => {
-    sideNavBar!.classList.toggle('hidden')
+	sideNavBar!.classList.toggle('hidden')
 })
 
 const facesSideLoader = new HumanFacesSideLoader(0);
 for (let i = 0; i < 200; i++) {
-    facesSideLoader.sideLoad().catch();
+	facesSideLoader.sideLoad().catch();
 }
 
 const rng = new Random();
 
 type Permalink = string;
 function showRedditLink(permalink: Permalink): boolean {
-    const postMatch = permalink.match(/\/?r\/([^/]+?)\/comments\/([^/]+)/);
-    if (isDebugMode()) console.log("postMatch", postMatch);
+	const postMatch = permalink.match(/\/?r\/([^/]+?)\/comments\/([^/]+)/);
+	if (isDebugMode()) console.log("postMatch", postMatch);
 
-    if (postMatch !== null) {
-        // The anchor points to a post
-        showSubreddit(postMatch[1]).then(() => {
-            focusPostByID(postMatch[2]);
-        });
-        clearPost();
-        renderRedditLink(permalink).catch( (reason: unknown) => {
-            console.error("There was a problem drawing this post on the page", {
-                "reason": reason,
-                "permalink": permalink,
-                "match results": postMatch
-            });
-        });
-        return true;
-    } else {
-        const subMatch = permalink.match(/\/?r\/([^/]+)/);
-        if (isDebugMode()) console.log("subMatch", subMatch);
+	if (postMatch !== null) {
+		// The anchor points to a post
+		showSubreddit(postMatch[1]).then(() => {
+			focusPostByID(postMatch[2]);
+		});
+		clearPost();
+		renderRedditLink(permalink).catch( (reason: unknown) => {
+			console.error("There was a problem drawing this post on the page", {
+				"reason": reason,
+				"permalink": permalink,
+				"match results": postMatch
+			});
+		});
+		return true;
+	} else {
+		const subMatch = permalink.match(/\/?r\/([^/]+)/);
+		if (isDebugMode()) console.log("subMatch", subMatch);
 
-        if (subMatch !== null) {
-            // The anchor points to a sub
-            showSubreddit(subMatch[1]);
-            return true;
-        } else {
-            // The anchor points to something weird
-            return false;
-        }
-    }
+		if (subMatch !== null) {
+			// The anchor points to a sub
+			showSubreddit(subMatch[1]);
+			return true;
+		} else {
+			// The anchor points to something weird
+			return false;
+		}
+	}
 }
 
 function showRedditPageOrDefault(permalink: Permalink | null) {
-    if (isDebugMode()) console.log("interpreting link", permalink);
-    if (permalink === null) {
-        // We don't have an anchor in the URL
-        showSubreddit("popular");
-        if (isDebugMode()) {
-            renderRedditLink(`/r/test/comments/z0yiof/formatting_test/`).catch((reason: unknown) => {
-                console.error("There was a problem drawing the test post on the page", {
-                    "reason": reason,
-                });
-            });
-        }
-    } else {
-        // We have an anchor in the URL
-        const worked = showRedditLink(permalink);
-        if (!worked) {
-            // The anchor pointed to something we do not support
-            showSubreddit("popular");
-        }
-    }
+	if (isDebugMode()) console.log("interpreting link", permalink);
+	if (permalink === null) {
+		// We don't have an anchor in the URL
+		showSubreddit("popular");
+		if (isDebugMode()) {
+			renderRedditLink(`/r/test/comments/z0yiof/formatting_test/`).catch((reason: unknown) => {
+				console.error("There was a problem drawing the test post on the page", {
+					"reason": reason,
+				});
+			});
+		}
+	} else {
+		// We have an anchor in the URL
+		const worked = showRedditLink(permalink);
+		if (!worked) {
+			// The anchor pointed to something we do not support
+			showSubreddit("popular");
+		}
+	}
 
 }
 
 async function showSubreddit(subreddit: string) {
-    clearPostsList();
-    let section = document.createElement('section');
-    section.classList.add('post')
-    strictQuerySelector('.post-header-button.sort').id = subreddit;
+	clearPostsList();
+	let section = document.createElement('section');
+	section.classList.add('post')
+	strictQuerySelector('.post-header-button.sort').id = subreddit;
 
-    try {
-        const posts: Listing<Post> = await fetchData<Listing<Post>>(`${redditBaseURL}/r/${subreddit}.json?limit=75`);
-        const responseData = posts.data.children;
+	try {
+		const posts: Listing<Post> = await fetchData<Listing<Post>>(`${redditBaseURL}/r/${subreddit}.json?limit=75`);
+		const responseData = posts.data.children;
 
-        try {
-            const subredditData = await fetchData<ApiObj>(`${redditBaseURL}/r/${subreddit}/about.json`);
-            const subredditInformation = subredditData.data as SubredditDetails;
-            displayPosts(responseData, subreddit, subredditInformation);
-            return Promise.resolve();
-        } catch (e) {
-            displayPosts(responseData, subreddit);
-            return Promise.resolve();
-        }
-    } catch (e) {
-        console.error(e);
-        return Promise.reject(e);
-    }
+		try {
+			const subredditData = await fetchData<ApiObj>(`${redditBaseURL}/r/${subreddit}/about.json`);
+			const subredditInformation = subredditData.data as SubredditDetails;
+			displayPosts(responseData, subreddit, subredditInformation);
+			return Promise.resolve();
+		} catch (e) {
+			displayPosts(responseData, subreddit);
+			return Promise.resolve();
+		}
+	} catch (e) {
+		console.error(e);
+		return Promise.reject(e);
+	}
 }
 
 async function renderRedditLink(permalink: Permalink) {
-    const baseurl = removeTrailingSlash(new URL(`${redditBaseURL}${permalink}`));
-    const url = `${baseurl}/.json?limit=75`;
-    try {
-        const postData: ApiObj = await fetchData<ApiObj>(url);
-        clearPostSection();
-        showPostFromData(postData);
-    } catch (e) {
-        console.error(e);
-    }
+	const baseurl = removeTrailingSlash(new URL(`${redditBaseURL}${permalink}`));
+	const url = `${baseurl}/.json?limit=75`;
+	try {
+		const postData: ApiObj = await fetchData<ApiObj>(url);
+		clearPostSection();
+		showPostFromData(postData);
+	} catch (e) {
+		console.error(e);
+	}
 }
 
 function permalinkFromURLAnchor(): Permalink | null {
-    // Capture the '/r/sub/...' part including the /r/
-    const permalink = new URL(document.URL).hash
-    if (permalink === "") {
-        return null;
-    }
+	// Capture the '/r/sub/...' part including the /r/
+	const permalink = new URL(document.URL).hash
+	if (permalink === "") {
+		return null;
+	}
 
-    // Remove the starting #
-    return permalink.slice(1);
+	// Remove the starting #
+	return permalink.slice(1);
 }
 
 function removeTrailingSlash(url: URL): URL {
-    if (url.pathname.slice(-1) === '/') {
-        url.pathname = url.pathname.slice(0,-1);
-        return url;
-    } else {
-        return url;
-    }
+	if (url.pathname.slice(-1) === '/') {
+		url.pathname = url.pathname.slice(0,-1);
+		return url;
+	} else {
+		return url;
+	}
 }
 
 interface URLAnchorFlags {
-    pushState: boolean
+	pushState: boolean
 }
 function setURLAnchor(permalink: Permalink, flags: URLAnchorFlags = {pushState:true}): void {
-    const url = removeTrailingSlash(new URL(document.URL));
-    if (url.protocol == "file:///" || ["localhost", "127.0.0.1", "[::1]"].find((v) => v == url.hostname) ) {
-        // Can't pushState something local anymore because of browser security
-        return;
-    }
-    const newurl = new URL(`${url.protocol}//${url.hostname}${url.pathname}#${permalink}`);
-    if (flags.pushState) {
-        window.history.pushState({}, '', newurl);
-    }
+	const url = removeTrailingSlash(new URL(document.URL));
+	if (url.protocol == "file:///" || ["localhost", "127.0.0.1", "[::1]"].find((v) => v == url.hostname) ) {
+		// Can't pushState something local anymore because of browser security
+		return;
+	}
+	const newurl = new URL(`${url.protocol}//${url.hostname}${url.pathname}#${permalink}`);
+	if (flags.pushState) {
+		window.history.pushState({}, '', newurl);
+	}
 }
 
 function getSubredditIcon(subredditInformation: SubredditDetails) {
-    if (subredditInformation.icon_img != '') {
-        return subredditInformation.icon_img
-    } else if (subredditInformation.community_icon != '') {
-        return subredditInformation.community_icon.replaceAll("&amp;", "&");
-    } else {
-        return 'https://img.icons8.com/fluency-systems-regular/512/reddit.png';
-    }
+	if (subredditInformation.icon_img != '') {
+		return subredditInformation.icon_img
+	} else if (subredditInformation.community_icon != '') {
+		return subredditInformation.community_icon.replaceAll("&amp;", "&");
+	} else {
+		return 'https://img.icons8.com/fluency-systems-regular/512/reddit.png';
+	}
 }
 
 function isFavorited(subreddit) {
-    return localStorage.getItem('savedSubreddits') && localStorage.getItem('savedSubreddits').toLowerCase().split(',').includes(subreddit.toLowerCase());
+	return localStorage.getItem('savedSubreddits') && localStorage.getItem('savedSubreddits').toLowerCase().split(',').includes(subreddit.toLowerCase());
 }
 
 // localStorage.setItem('showSubDetails', 'true');
@@ -198,555 +198,555 @@ let favoriteIcon = document.createElement('span');
 let blockIcon = document.createElement('span');
 
 function cloneTemplate<T>(selector) {
-    const template = document.querySelector<HTMLTemplateElement>(selector);
-    if (template !== null) {
-        const deepClone = template.cloneNode(true) as HTMLTemplateElement
-        return deepClone.content.firstElementChild as T;
-    }
-    return null;
+	const template = document.querySelector<HTMLTemplateElement>(selector);
+	if (template !== null) {
+		const deepClone = template.cloneNode(true) as HTMLTemplateElement
+		return deepClone.content.firstElementChild as T;
+	}
+	return null;
 }
 
 function focusPost(post: HTMLButtonElement) {
-    document.querySelector(".focused-post")?.classList.remove("focused-post");
-    post.classList.add("focused-post");
-    return true;
+	document.querySelector(".focused-post")?.classList.remove("focused-post");
+	post.classList.add("focused-post");
+	return true;
 }
 function focusPostByID(id: string) {
-    const element = document.getElementById(id);
-    console.log("focusElementByID", id, element);
-    if (element instanceof HTMLButtonElement) {
-        return focusPost(element);
-    } else {
-        return false;
-    }
+	const element = document.getElementById(id);
+	console.log("focusElementByID", id, element);
+	if (element instanceof HTMLButtonElement) {
+		return focusPost(element);
+	} else {
+		return false;
+	}
 }
 
 function displayPosts(posts: Post[], subreddit, subredditInformation: SubredditDetails = {
-    "title": null,
-    "icon_img": '',
-    "community_icon": '',
-    "subscribers": null,
-    "public_description": null,
-    "active_user_count": 0,
-    "display_name_prefixed": null,
-    "over18": false,
-    accounts_active_is_fuzzed: false,
-    accounts_active: 0,
-    advertiser_category: "",
-    all_original_content: false,
-    allow_discovery: false,
-    allow_galleries: false,
-    allow_images: false,
-    allow_polls: false,
-    allow_predictions_tournament: false,
-    allow_predictions: false,
-    allow_videogifs: false,
-    allow_videos: false,
-    banner_background_color: "",
-    banner_background_image: "",
-    can_assign_link_flair: false,
-    can_assign_user_flair: false,
-    collapse_deleted_comments: false,
-    comment_score_hide_mins: 0,
-    community_reviewed: false,
-    created_utc: 0,
-    created: 0,
-    description_html: "",
-    disable_contributor_requests: false,
-    emojis_custom_size: undefined,
-    emojis_enabled: false,
-    has_menu_widget: false,
-    header_img: "",
-    header_title: "",
-    hide_ads: false,
-    id: "",
-    is_crosspostable_subreddit: false,
-    is_enrolled_in_new_modmail: undefined,
-    lang: "",
-    link_flair_position: "",
-    mobile_banner_image: "",
-    notification_level: "",
-    original_content_tag_enabled: false,
-    prediction_leaderboard_entry_type: "",
-    primary_color: "",
-    public_description_html: "",
-    public_traffic: false,
-    quarantine: false,
-    show_media_preview: false,
-    spoilers_enabled: false,
-    submission_type: "",
-    submit_link_label: "",
-    submit_text_html: "",
-    submit_text: "",
-    subreddit_type: "",
-    suggested_comment_sort: "",
-    user_can_flair_in_sr: false,
-    user_flair_background_color: undefined,
-    user_flair_css_class: undefined,
-    user_flair_enabled_in_sr: false,
-    user_flair_position: "",
-    user_flair_richtext: [],
-    user_flair_template_id: undefined,
-    user_flair_text_color: undefined,
-    user_flair_text: undefined,
-    user_flair_type: "",
-    user_has_favorited: false,
-    user_is_banned: false,
-    user_sr_flair_enabled: false,
-    user_sr_theme_enabled: false,
-    whitelist_status: "",
-    wiki_enabled: false,
-    wls: 0,
-    accept_followers: false,
-    banner_img: "",
-    banner_size: [],
-    description: "",
-    display_name: "",
-    free_form_reports: false,
-    header_size: [],
-    icon_size: undefined,
-    key_color: "",
-    link_flair_enabled: false,
-    name: "",
-    restrict_commenting: false,
-    restrict_posting: false,
-    show_media: false,
-    submit_text_label: "",
-    url: "",
-    user_is_contributor: false,
-    user_is_moderator: false,
-    user_is_muted: false,
-    user_is_subscriber: false
+	"title": null,
+	"icon_img": '',
+	"community_icon": '',
+	"subscribers": null,
+	"public_description": null,
+	"active_user_count": 0,
+	"display_name_prefixed": null,
+	"over18": false,
+	accounts_active_is_fuzzed: false,
+	accounts_active: 0,
+	advertiser_category: "",
+	all_original_content: false,
+	allow_discovery: false,
+	allow_galleries: false,
+	allow_images: false,
+	allow_polls: false,
+	allow_predictions_tournament: false,
+	allow_predictions: false,
+	allow_videogifs: false,
+	allow_videos: false,
+	banner_background_color: "",
+	banner_background_image: "",
+	can_assign_link_flair: false,
+	can_assign_user_flair: false,
+	collapse_deleted_comments: false,
+	comment_score_hide_mins: 0,
+	community_reviewed: false,
+	created_utc: 0,
+	created: 0,
+	description_html: "",
+	disable_contributor_requests: false,
+	emojis_custom_size: undefined,
+	emojis_enabled: false,
+	has_menu_widget: false,
+	header_img: "",
+	header_title: "",
+	hide_ads: false,
+	id: "",
+	is_crosspostable_subreddit: false,
+	is_enrolled_in_new_modmail: undefined,
+	lang: "",
+	link_flair_position: "",
+	mobile_banner_image: "",
+	notification_level: "",
+	original_content_tag_enabled: false,
+	prediction_leaderboard_entry_type: "",
+	primary_color: "",
+	public_description_html: "",
+	public_traffic: false,
+	quarantine: false,
+	show_media_preview: false,
+	spoilers_enabled: false,
+	submission_type: "",
+	submit_link_label: "",
+	submit_text_html: "",
+	submit_text: "",
+	subreddit_type: "",
+	suggested_comment_sort: "",
+	user_can_flair_in_sr: false,
+	user_flair_background_color: undefined,
+	user_flair_css_class: undefined,
+	user_flair_enabled_in_sr: false,
+	user_flair_position: "",
+	user_flair_richtext: [],
+	user_flair_template_id: undefined,
+	user_flair_text_color: undefined,
+	user_flair_text: undefined,
+	user_flair_type: "",
+	user_has_favorited: false,
+	user_is_banned: false,
+	user_sr_flair_enabled: false,
+	user_sr_theme_enabled: false,
+	whitelist_status: "",
+	wiki_enabled: false,
+	wls: 0,
+	accept_followers: false,
+	banner_img: "",
+	banner_size: [],
+	description: "",
+	display_name: "",
+	free_form_reports: false,
+	header_size: [],
+	icon_size: undefined,
+	key_color: "",
+	link_flair_enabled: false,
+	name: "",
+	restrict_commenting: false,
+	restrict_posting: false,
+	show_media: false,
+	submit_text_label: "",
+	url: "",
+	user_is_contributor: false,
+	user_is_moderator: false,
+	user_is_muted: false,
+	user_is_subscriber: false
 }) {
-    if (subreddit !== 'popular' && (localStorage.getItem('showSubDetails') == 'true' || localStorage.getItem('showSubDetails') == null)) {
-        // let postSectionDiv = document.querySelector('.post-sidebar');
-        subredditInfoContainer.style.display = 'flex';
-        headerButtons.style.borderRadius = "0";
-        subredditInfoContainer.classList.add('subreddit-info');
-        subredditInfoHeading.innerHTML = subredditInformation.title;
-        subredditInfoHeading.classList.add('subreddit-info-heading');
-        blockIcon.setAttribute('data-subreddit', subredditInformation.display_name || subreddit);
-        blockIcon.classList.add("block-btn")
-        blockIcon.innerHTML = isBlocked(subreddit) ? '+' : '-';
-        blockIcon.title = isBlocked(subreddit) ? 'Unblock subreddit' : 'Block subreddit';
+	if (subreddit !== 'popular' && (localStorage.getItem('showSubDetails') == 'true' || localStorage.getItem('showSubDetails') == null)) {
+		// let postSectionDiv = document.querySelector('.post-sidebar');
+		subredditInfoContainer.style.display = 'flex';
+		headerButtons.style.borderRadius = "0";
+		subredditInfoContainer.classList.add('subreddit-info');
+		subredditInfoHeading.innerHTML = subredditInformation.title;
+		subredditInfoHeading.classList.add('subreddit-info-heading');
+		blockIcon.setAttribute('data-subreddit', subredditInformation.display_name || subreddit);
+		blockIcon.classList.add("block-btn")
+		blockIcon.innerHTML = isBlocked(subreddit) ? '+' : '-';
+		blockIcon.title = isBlocked(subreddit) ? 'Unblock subreddit' : 'Block subreddit';
 
-        favoriteIcon.id = 'favorite-btn';
-        favoriteIcon.innerHTML = '<svg width="16" height="16" class="favorite-icon" viewBox="0 0 176 168" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M89.7935 6.93173L111.277 50.4619C113.025 54.0036 116.404 56.4584 120.312 57.0264L168.351 64.0068C169.991 64.2451 170.646 66.2611 169.459 67.4182L134.698 101.302C131.87 104.058 130.579 108.031 131.247 111.923L139.453 159.767C139.733 161.401 138.018 162.647 136.551 161.876L93.5841 139.287C90.0882 137.449 85.9118 137.449 82.4159 139.287L39.4491 161.876C37.9818 162.647 36.267 161.401 36.5472 159.768L44.7531 111.923C45.4208 108.031 44.1302 104.059 41.302 101.302L6.54106 67.4182C5.35402 66.2611 6.00905 64.2451 7.64948 64.0068L55.6879 57.0264C59.5964 56.4584 62.9752 54.0036 64.7231 50.4619L86.2065 6.93174C86.9402 5.44523 89.0599 5.44525 89.7935 6.93173Z"/></svg>'
-        favoriteIcon.setAttribute('data-subreddit', subreddit);
-        if (isFavorited(subreddit)) {
-            favoriteIcon.querySelector('svg').classList.add('favorited');
-        }
+		favoriteIcon.id = 'favorite-btn';
+		favoriteIcon.innerHTML = '<svg width="16" height="16" class="favorite-icon" viewBox="0 0 176 168" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M89.7935 6.93173L111.277 50.4619C113.025 54.0036 116.404 56.4584 120.312 57.0264L168.351 64.0068C169.991 64.2451 170.646 66.2611 169.459 67.4182L134.698 101.302C131.87 104.058 130.579 108.031 131.247 111.923L139.453 159.767C139.733 161.401 138.018 162.647 136.551 161.876L93.5841 139.287C90.0882 137.449 85.9118 137.449 82.4159 139.287L39.4491 161.876C37.9818 162.647 36.267 161.401 36.5472 159.768L44.7531 111.923C45.4208 108.031 44.1302 104.059 41.302 101.302L6.54106 67.4182C5.35402 66.2611 6.00905 64.2451 7.64948 64.0068L55.6879 57.0264C59.5964 56.4584 62.9752 54.0036 64.7231 50.4619L86.2065 6.93174C86.9402 5.44523 89.0599 5.44525 89.7935 6.93173Z"/></svg>'
+		favoriteIcon.setAttribute('data-subreddit', subreddit);
+		if (isFavorited(subreddit)) {
+			favoriteIcon.querySelector('svg').classList.add('favorited');
+		}
 
-        subredditInfoContainer.title = `${subredditInformation.display_name_prefixed} • ${numberFormatter(subredditInformation.subscribers)} members • ${subredditInformation.active_user_count} online ${subredditInformation.public_description}`;
-        subredditInfoDetails.innerHTML = `${subredditInformation.display_name_prefixed} • ${numberFormatter(subredditInformation.subscribers)} members • ${subredditInformation.active_user_count} online`;
-        if (subredditInformation.over18) {
-            subredditInfoDetails.innerHTML += '<br><span>Warning: NSFW!</span>'
-        }
-        subredditInfoDetails.classList.add('subreddit-info-details');
-        subredditInfoIcon.src = getSubredditIcon(subredditInformation);
-        subredditInfoIcon.classList.add('subreddit-info-icon');
-        if (subreddit == 'gnometalk') {
-            subredditInfoHeading.innerHTML = 'You found an easter egg!';
-            subredditInfoIcon.src = 'https://static.wikia.nocookie.net/surrealmemes/images/f/ff/Noggin.png/revision/latest?cb=20190114192842';
-        }
-        subredditDetailsContainer.append(subredditInfoHeading, subredditInfoDetails);
-        subredditIconContainer.append(subredditInfoIcon);
-        subredditIconContainer.classList.add('subreddit-icon-container');
-        subredditDetailsContainer.classList.add('subreddit-details-container');
-        subredditInfoContainer.append(subredditIconContainer, subredditDetailsContainer, favoriteIcon, blockIcon);
-        headerButtons.parentNode.insertBefore(subredditInfoContainer, headerButtons);
-        // scrollable.style.height = `calc(100vh - ${calcHeight})`;
-        if (document.body.classList.contains('compact')) {
-            scrollable.style.height = 'calc(100vh - 252px)';
-        } else if (document.body.classList.contains('cozy')) {
-            scrollable.style.height = 'calc(100vh - 265px)';
-        } else {
-            scrollable.style.height = 'calc(100vh - 273px)';
-        }
-    } else {
-        subredditInfoContainer.style.display = 'none';
-        headerButtons.style.borderRadius = "4px 4px 0px 0px";
-        if (document.body.classList.contains('compact')) {
-            scrollable.style.height = 'calc(100vh - 170px)';
-        } else {
-            scrollable.style.height = 'calc(100vh - 178px)';
-        }
-    }
-    if (subreddit.toLowerCase() == 'crappydesign') {
-        document.body.style.fontFamily = '"Comic Sans MS", "Comic Sans", cursive';
-        subredditInfoContainer.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
-        subredditInfoContainer.style.backgroundSize = '350px';
-        subredditInfoContainer.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`;
-        subredditInfoContainer.style.zIndex = '10'
-    } else {
-        document.body.style.fontFamily = 'Segoe UI';
-        subredditInfoContainer.style.background = 'var(--background-color-2)';
-        subredditInfoContainer.style.transform = 'none';
-        subredditInfoContainer.style.zIndex = 'auto'
-    }
+		subredditInfoContainer.title = `${subredditInformation.display_name_prefixed} • ${numberFormatter(subredditInformation.subscribers)} members • ${subredditInformation.active_user_count} online ${subredditInformation.public_description}`;
+		subredditInfoDetails.innerHTML = `${subredditInformation.display_name_prefixed} • ${numberFormatter(subredditInformation.subscribers)} members • ${subredditInformation.active_user_count} online`;
+		if (subredditInformation.over18) {
+			subredditInfoDetails.innerHTML += '<br><span>Warning: NSFW!</span>'
+		}
+		subredditInfoDetails.classList.add('subreddit-info-details');
+		subredditInfoIcon.src = getSubredditIcon(subredditInformation);
+		subredditInfoIcon.classList.add('subreddit-info-icon');
+		if (subreddit == 'gnometalk') {
+			subredditInfoHeading.innerHTML = 'You found an easter egg!';
+			subredditInfoIcon.src = 'https://static.wikia.nocookie.net/surrealmemes/images/f/ff/Noggin.png/revision/latest?cb=20190114192842';
+		}
+		subredditDetailsContainer.append(subredditInfoHeading, subredditInfoDetails);
+		subredditIconContainer.append(subredditInfoIcon);
+		subredditIconContainer.classList.add('subreddit-icon-container');
+		subredditDetailsContainer.classList.add('subreddit-details-container');
+		subredditInfoContainer.append(subredditIconContainer, subredditDetailsContainer, favoriteIcon, blockIcon);
+		headerButtons.parentNode.insertBefore(subredditInfoContainer, headerButtons);
+		// scrollable.style.height = `calc(100vh - ${calcHeight})`;
+		if (document.body.classList.contains('compact')) {
+			scrollable.style.height = 'calc(100vh - 252px)';
+		} else if (document.body.classList.contains('cozy')) {
+			scrollable.style.height = 'calc(100vh - 265px)';
+		} else {
+			scrollable.style.height = 'calc(100vh - 273px)';
+		}
+	} else {
+		subredditInfoContainer.style.display = 'none';
+		headerButtons.style.borderRadius = "4px 4px 0px 0px";
+		if (document.body.classList.contains('compact')) {
+			scrollable.style.height = 'calc(100vh - 170px)';
+		} else {
+			scrollable.style.height = 'calc(100vh - 178px)';
+		}
+	}
+	if (subreddit.toLowerCase() == 'crappydesign') {
+		document.body.style.fontFamily = '"Comic Sans MS", "Comic Sans", cursive';
+		subredditInfoContainer.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
+		subredditInfoContainer.style.backgroundSize = '350px';
+		subredditInfoContainer.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`;
+		subredditInfoContainer.style.zIndex = '10'
+	} else {
+		document.body.style.fontFamily = 'Segoe UI';
+		subredditInfoContainer.style.background = 'var(--background-color-2)';
+		subredditInfoContainer.style.transform = 'none';
+		subredditInfoContainer.style.zIndex = 'auto'
+	}
 
-    for (let post of posts) {
-        if (isBlocked(post.data.subreddit)) {
-            continue;
-        }
-        let listButtonElement: HTMLButtonElement = document.createElement('button');
-        listButtonElement.classList.add('post');
+	for (let post of posts) {
+		if (isBlocked(post.data.subreddit)) {
+			continue;
+		}
+		let listButtonElement: HTMLButtonElement = document.createElement('button');
+		listButtonElement.classList.add('post');
 
-        let title = document.createElement('span');
-        let titleText = post.data.title;
-        title.append(titleText);
-        listButtonElement.title = post.data.title;
-        listButtonElement.id = post.data.id;
-        title.classList.add('title');
+		let title = document.createElement('span');
+		let titleText = post.data.title;
+		title.append(titleText);
+		listButtonElement.title = post.data.title;
+		listButtonElement.id = post.data.id;
+		title.classList.add('title');
 
-        let subreddit = document.createElement('span');
-        subreddit.append(post.data.subreddit_name_prefixed);
-        subreddit.classList.add('subreddit');
+		let subreddit = document.createElement('span');
+		subreddit.append(post.data.subreddit_name_prefixed);
+		subreddit.classList.add('subreddit');
 
-        const upvotes = cloneTemplate<HTMLSpanElement>('#upvote-template');
-        upvotes.querySelector<HTMLSpanElement>('span.upvotes').innerHTML = `${post.data.score.toLocaleString()}`;
-        upvotes.classList.add('post-data');
-        const downvotes = cloneTemplate<HTMLSpanElement>('#downvote-template');
-        upvotes.appendChild(downvotes);
+		const upvotes = cloneTemplate<HTMLSpanElement>('#upvote-template');
+		upvotes.querySelector<HTMLSpanElement>('span.upvotes').innerHTML = `${post.data.score.toLocaleString()}`;
+		upvotes.classList.add('post-data');
+		const downvotes = cloneTemplate<HTMLSpanElement>('#downvote-template');
+		upvotes.appendChild(downvotes);
 
-        let profile = document.createElement('span');
-        profile.classList.add('profile');
-        let ppInitials = initials[Math.floor(Math.random() * initials.length)] + initials[Math.floor(Math.random() * initials.length)];
-        let ppColor = colors[Math.floor(Math.random() * colors.length)];
-        if (ppColor === '#ebe6d1' || ppColor === '#ebe6d1') {
-            profile.style.color = 'black';
-        }
-        profile.style.backgroundColor = ppColor;
-        profile.append(ppInitials);
-        listButtonElement.append(profile, title, subreddit, upvotes);
-        if (post.data.subreddit_name_prefixed.toLowerCase() == 'r/crappydesign') {
-            listButtonElement.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`
-            listButtonElement.style.zIndex =  `${Math.floor(Math.random() * (10 - 1 + 1) + 1)}`
-            profile.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
+		let profile = document.createElement('span');
+		profile.classList.add('profile');
+		let ppInitials = initials[Math.floor(Math.random() * initials.length)] + initials[Math.floor(Math.random() * initials.length)];
+		let ppColor = colors[Math.floor(Math.random() * colors.length)];
+		if (ppColor === '#ebe6d1' || ppColor === '#ebe6d1') {
+			profile.style.color = 'black';
+		}
+		profile.style.backgroundColor = ppColor;
+		profile.append(ppInitials);
+		listButtonElement.append(profile, title, subreddit, upvotes);
+		if (post.data.subreddit_name_prefixed.toLowerCase() == 'r/crappydesign') {
+			listButtonElement.style.transform = `rotate(${Math.floor(Math.random() * (5 - -5 + 1) + -5)}deg)`
+			listButtonElement.style.zIndex =  `${Math.floor(Math.random() * (10 - 1 + 1) + 1)}`
+			profile.style.background = `linear-gradient(${Math.floor(Math.random() * (360 - 0 + 1) + 0)}deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)`;
 
-        }
+		}
 
-        listButtonElement.addEventListener('click', () => {
-            focusPost(listButtonElement);
-            setURLAnchor(post.data.permalink);
-            renderRedditLink(post.data.permalink).catch( (reason) => {
-                console.error("There was a problem drawing this post on the page", {
-                    "reason": reason,
-                    "permalink": post.data.permalink,
-                });
-            });
-        })
-        postsList.append(listButtonElement);
-    }
-    postsList.append("That's enough reddit for now. Get back to work!")
+		listButtonElement.addEventListener('click', () => {
+			focusPost(listButtonElement);
+			setURLAnchor(post.data.permalink);
+			renderRedditLink(post.data.permalink).catch( (reason) => {
+				console.error("There was a problem drawing this post on the page", {
+					"reason": reason,
+					"permalink": post.data.permalink,
+				});
+			});
+		})
+		postsList.append(listButtonElement);
+	}
+	postsList.append("That's enough reddit for now. Get back to work!")
 }
 
 favoriteIcon.addEventListener('click', function() {
-    const btn = document.getElementById('favorite-btn')
-    const favorited = btn.classList.contains('favorited');
-    const subreddit = btn.getAttribute('data-subreddit');
-    if (!favorited) {
-        btn.classList.add('favorited');
-        favoriteSubreddit(subreddit);
-    } else {
-        btn.classList.remove('favorited');
-        unFavoriteSubreddit(subreddit);
-    }
+	const btn = document.getElementById('favorite-btn')
+	const favorited = btn.classList.contains('favorited');
+	const subreddit = btn.getAttribute('data-subreddit');
+	if (!favorited) {
+		btn.classList.add('favorited');
+		favoriteSubreddit(subreddit);
+	} else {
+		btn.classList.remove('favorited');
+		unFavoriteSubreddit(subreddit);
+	}
 })
 
 function updateBlockedSubsList() {
-    const ulElement = document.getElementById('blocked-subs');
-    ulElement.innerHTML = "";
-    const blockList = localStorage.getItem('blockedSubreddits');
-    if (blockList) {
-        const blockedSubreddits = blockList.split(',');
-        for (const subreddit of blockedSubreddits) {
-            const item = cloneTemplate<HTMLUListElement>('#blocklist-item');
-            item.querySelector('span.blocklist-item-name').innerHTML = subreddit;
-            item.querySelector('button').addEventListener('click', () => {
-                unblock(subreddit);
-                item.remove();
-            });
-            ulElement.appendChild(item);
-        }
-    }
+	const ulElement = document.getElementById('blocked-subs');
+	ulElement.innerHTML = "";
+	const blockList = localStorage.getItem('blockedSubreddits');
+	if (blockList) {
+		const blockedSubreddits = blockList.split(',');
+		for (const subreddit of blockedSubreddits) {
+			const item = cloneTemplate<HTMLUListElement>('#blocklist-item');
+			item.querySelector('span.blocklist-item-name').innerHTML = subreddit;
+			item.querySelector('button').addEventListener('click', () => {
+				unblock(subreddit);
+				item.remove();
+			});
+			ulElement.appendChild(item);
+		}
+	}
 }
 
 function isBlocked(subreddit) {
-    return localStorage.getItem('blockedSubreddits') !== null && localStorage.getItem('blockedSubreddits').toLowerCase().split(',').includes(subreddit.toLowerCase());
+	return localStorage.getItem('blockedSubreddits') !== null && localStorage.getItem('blockedSubreddits').toLowerCase().split(',').includes(subreddit.toLowerCase());
 }
 
 function block(subreddit) {
-    let blockedSubreddits = localStorage.getItem('blockedSubreddits');
-    if (blockedSubreddits) {
-        localStorage.setItem('blockedSubreddits', `${blockedSubreddits},${subreddit}`);
-    } else {
-        localStorage.setItem('blockedSubreddits', subreddit);
-    }
-    updateBlockedSubsList();
-    if (isDebugMode()) console.log(`Blocked ${subreddit}`);
+	let blockedSubreddits = localStorage.getItem('blockedSubreddits');
+	if (blockedSubreddits) {
+		localStorage.setItem('blockedSubreddits', `${blockedSubreddits},${subreddit}`);
+	} else {
+		localStorage.setItem('blockedSubreddits', subreddit);
+	}
+	updateBlockedSubsList();
+	if (isDebugMode()) console.log(`Blocked ${subreddit}`);
 }
 
 function unblock(subreddit) {
-    const blockedSubreddits = localStorage.getItem('blockedSubreddits');
-    if (blockedSubreddits) {
-        const asArray = blockedSubreddits.split(',');
-        localStorage.setItem('blockedSubreddits', asArray.filter((s) => s.toLowerCase() !== subreddit.toLowerCase()).join(','));
-        updateBlockedSubsList();
-        if (isDebugMode()) console.log(`Unblocked ${subreddit}`);
-    }
+	const blockedSubreddits = localStorage.getItem('blockedSubreddits');
+	if (blockedSubreddits) {
+		const asArray = blockedSubreddits.split(',');
+		localStorage.setItem('blockedSubreddits', asArray.filter((s) => s.toLowerCase() !== subreddit.toLowerCase()).join(','));
+		updateBlockedSubsList();
+		if (isDebugMode()) console.log(`Unblocked ${subreddit}`);
+	}
 }
 
 blockIcon.addEventListener('click', (event) => {
-    const blockBtn = event.target as any
-    if (blockBtn instanceof HTMLSpanElement) {
-        const subreddit = blockBtn.getAttribute('data-subreddit');
-        if (isBlocked(subreddit)) {
-            unblock(subreddit);
-            blockBtn.innerHTML = '-';
-            blockBtn.title = 'Block subreddit';
-        } else {
-            block(subreddit);
-            blockBtn.innerHTML = '+';
-            blockBtn.title = 'Unblock subreddit';
-        } 
-    }
+	const blockBtn = event.target as any
+	if (blockBtn instanceof HTMLSpanElement) {
+		const subreddit = blockBtn.getAttribute('data-subreddit');
+		if (isBlocked(subreddit)) {
+			unblock(subreddit);
+			blockBtn.innerHTML = '-';
+			blockBtn.title = 'Block subreddit';
+		} else {
+			block(subreddit);
+			blockBtn.innerHTML = '+';
+			blockBtn.title = 'Unblock subreddit';
+		} 
+	}
 })
 
 function favoriteSubreddit(subreddit) {
-    let subredditBtn: HTMLButtonElement = document.createElement<"button">('button');
-    subredditBtn.classList.add('subreddit', 'button');
-    subredditBtn.id = subreddit;
-    subredditBtn.addEventListener('click', async () => {
-        clearPost();
-        if (isDebugMode()) console.log("custom sub click", subredditBtn.id);
-        setURLAnchor(`/r/${subredditBtn.id}`);
-        showSubreddit(subredditBtn.id);
-    })
+	let subredditBtn: HTMLButtonElement = document.createElement<"button">('button');
+	subredditBtn.classList.add('subreddit', 'button');
+	subredditBtn.id = subreddit;
+	subredditBtn.addEventListener('click', async () => {
+		clearPost();
+		if (isDebugMode()) console.log("custom sub click", subredditBtn.id);
+		setURLAnchor(`/r/${subredditBtn.id}`);
+		showSubreddit(subredditBtn.id);
+	})
 
-    let savedSubreddits = localStorage.getItem('savedSubreddits');
-    if (savedSubreddits) {
-        savedSubreddits += `,${subreddit}`;
-        localStorage.setItem('savedSubreddits', savedSubreddits);
-    } else {
-        localStorage.setItem('savedSubreddits', subreddit);
-    }
-    subredditBtn.append('r/' + subreddit);
-    subredditSection.append(subredditBtn);
+	let savedSubreddits = localStorage.getItem('savedSubreddits');
+	if (savedSubreddits) {
+		savedSubreddits += `,${subreddit}`;
+		localStorage.setItem('savedSubreddits', savedSubreddits);
+	} else {
+		localStorage.setItem('savedSubreddits', subreddit);
+	}
+	subredditBtn.append('r/' + subreddit);
+	subredditSection.append(subredditBtn);
 }
 
 function unFavoriteSubreddit(subreddit) {
-    document.getElementById(subreddit).remove();
-    const savedSubreddits = localStorage.getItem('savedSubreddits');
-    const newSavedSubreddits = savedSubreddits.split(',').filter(e => e.toLowerCase() !== subreddit.toLowerCase());
-    localStorage.setItem('savedSubreddits', newSavedSubreddits.toString());
+	document.getElementById(subreddit).remove();
+	const savedSubreddits = localStorage.getItem('savedSubreddits');
+	const newSavedSubreddits = savedSubreddits.split(',').filter(e => e.toLowerCase() !== subreddit.toLowerCase());
+	localStorage.setItem('savedSubreddits', newSavedSubreddits.toString());
 }
 
 type CommentBuilderOptions = {
-    indent: number, 
-    ppBuffer: HTMLImageElement[], 
-    post: Permalink,
-    commentsEncounteredSoFar: Set<string>    
+	indent: number, 
+	ppBuffer: HTMLImageElement[], 
+	post: Permalink,
+	commentsEncounteredSoFar: Set<string>    
 };
 
 function displayCommentsRecursive(parentElement: HTMLElement, listing: ApiObj[],  {post, indent=0, ppBuffer=[], commentsEncounteredSoFar=new Set()}: CommentBuilderOptions) {
-    if (listing.length === 0) {
-        return;
-    }
+	if (listing.length === 0) {
+		return;
+	}
 
-    for (const redditObj of listing) {
-        // At the end of the list reddit adds a "more" object
-        if (redditObj.kind === "t1") {
-            // kind being t1 assures us listing[0] is a SnooComment
-            const comment: SnooComment = redditObj as SnooComment;
-            commentsEncounteredSoFar.add(comment.data.id);
-            
-            const commentElement = document.createElement("div");
-            if (indent > 0) {
-                commentElement.classList.add('replied-comment');
-            }
+	for (const redditObj of listing) {
+		// At the end of the list reddit adds a "more" object
+		if (redditObj.kind === "t1") {
+			// kind being t1 assures us listing[0] is a SnooComment
+			const comment: SnooComment = redditObj as SnooComment;
+			commentsEncounteredSoFar.add(comment.data.id);
+			
+			const commentElement = document.createElement("div");
+			if (indent > 0) {
+				commentElement.classList.add('replied-comment');
+			}
 
-            parentElement.appendChild(commentElement);
-            const prom: Promise<HTMLElement> = createComment(comment, {ppBuffer: ppBuffer, domNode: commentElement});
-            prom.catch( (reason) => {
-                console.error("There was a problem drawing this comment on the page", {"reason":reason, "comment data": comment, "profile picture": ppBuffer, "anchor element on the page=": commentElement});
-            })
+			parentElement.appendChild(commentElement);
+			const prom: Promise<HTMLElement> = createComment(comment, {ppBuffer: ppBuffer, domNode: commentElement});
+			prom.catch( (reason) => {
+				console.error("There was a problem drawing this comment on the page", {"reason":reason, "comment data": comment, "profile picture": ppBuffer, "anchor element on the page=": commentElement});
+			})
 
-            if (comment.data.replies) {
-                displayCommentsRecursive(commentElement, comment.data.replies.data.children, {
-                    indent: indent + 10, 
-                    ppBuffer: ppBuffer,
-                    post: post,
-                    commentsEncounteredSoFar
-                });
-            }
+			if (comment.data.replies) {
+				displayCommentsRecursive(commentElement, comment.data.replies.data.children, {
+					indent: indent + 10, 
+					ppBuffer: ppBuffer,
+					post: post,
+					commentsEncounteredSoFar
+				});
+			}
 
-            if (indent === 0) {
-                parentElement.appendChild(document.createElement('hr'));
-            }
-        } else if (redditObj.kind === "more" && post !== undefined) {
-            const data = redditObj as MoreComments;
-            const moreElement = document.createElement("span");
-            moreElement.classList.add("btn-more");
-            
-            // Fetch the parent of the "more" listing
-            const parentLink = `${redditBaseURL}${post}${data.data.parent_id.slice(3)}`;
-            /*
-                // We used to fetch the comment directly listed by the "more" listing aka data.data.id
-                // But sometimes 'id' was '_' and no children were listed (despite the fact that there was several on the actual website)
-                // If you go back 1 step in the tree to the parent and circle back to the children this way, however, you 
-                //   get around the bug and the children get properly listed
-                // Couldn't tell you why.
-                // If you wish to see the behavior in action, enable this piece of code
-                if (data.data.children.length === 0) {
-                    if (isDebugMode()) console.log("Empty 'more' object?", redditObj);
-                    moreElement.style.backgroundColor = "#ff0000";
-                }
-            */
-            
-            moreElement.addEventListener("click", () => {
-                moreElement.classList.add("waiting");
-                fetch(`${parentLink}.json`)
-                    .catch((e) => {
-                        moreElement.classList.remove("waiting");
-                        console.error(e);
-                    })
-                    .then((response) => {
-                        if (response instanceof Response) {
-                            return response.json()
-                        }
-                    })
-                    .catch((e) => {
-                        console.error(e);
-                    })
-                    .then((data: ApiObj[]) => {
-                        if (isDebugMode()) console.log("Got data!", parentLink, data);
-                        moreElement.remove();
+			if (indent === 0) {
+				parentElement.appendChild(document.createElement('hr'));
+			}
+		} else if (redditObj.kind === "more" && post !== undefined) {
+			const data = redditObj as MoreComments;
+			const moreElement = document.createElement("span");
+			moreElement.classList.add("btn-more");
+			
+			// Fetch the parent of the "more" listing
+			const parentLink = `${redditBaseURL}${post}${data.data.parent_id.slice(3)}`;
+			/*
+				// We used to fetch the comment directly listed by the "more" listing aka data.data.id
+				// But sometimes 'id' was '_' and no children were listed (despite the fact that there was several on the actual website)
+				// If you go back 1 step in the tree to the parent and circle back to the children this way, however, you 
+				//   get around the bug and the children get properly listed
+				// Couldn't tell you why.
+				// If you wish to see the behavior in action, enable this piece of code
+				if (data.data.children.length === 0) {
+					if (isDebugMode()) console.log("Empty 'more' object?", redditObj);
+					moreElement.style.backgroundColor = "#ff0000";
+				}
+			*/
+			
+			moreElement.addEventListener("click", () => {
+				moreElement.classList.add("waiting");
+				fetch(`${parentLink}.json`)
+					.catch((e) => {
+						moreElement.classList.remove("waiting");
+						console.error(e);
+					})
+					.then((response) => {
+						if (response instanceof Response) {
+							return response.json()
+						}
+					})
+					.catch((e) => {
+						console.error(e);
+					})
+					.then((data: ApiObj[]) => {
+						if (isDebugMode()) console.log("Got data!", parentLink, data);
+						moreElement.remove();
 
-                        // Our type definitions aren't robust enough to go through the tree properly
-                        // We just cop out. Cast as `any` and try/catch.
-                        let replies: Listing<SnooComment>;
-                        try {
-                            replies = (data as any)[1].data.children[0].data.replies.data
-                        } catch (e) {
-                            return Promise.reject(e);
-                        }
+						// Our type definitions aren't robust enough to go through the tree properly
+						// We just cop out. Cast as `any` and try/catch.
+						let replies: Listing<SnooComment>;
+						try {
+							replies = (data as any)[1].data.children[0].data.replies.data
+						} catch (e) {
+							return Promise.reject(e);
+						}
 
-                        replies.children = replies.children.filter((v) => {
-                            return !commentsEncounteredSoFar.has(v.data.id)
-                        })
+						replies.children = replies.children.filter((v) => {
+							return !commentsEncounteredSoFar.has(v.data.id)
+						})
 
-                        displayCommentsRecursive(parentElement, replies.children, {
-                            indent: indent + 10,
-                            ppBuffer: ppBuffer,
-                            post: post,
-                            commentsEncounteredSoFar
-                        });
-                        return Promise.resolve();
-                    });
-            });
-            parentElement.appendChild(moreElement);
-        }
-    }
+						displayCommentsRecursive(parentElement, replies.children, {
+							indent: indent + 10,
+							ppBuffer: ppBuffer,
+							post: post,
+							commentsEncounteredSoFar
+						});
+						return Promise.resolve();
+					});
+			});
+			parentElement.appendChild(moreElement);
+		}
+	}
 }
 
 function displayComments(commentsData, {post}: {post: Permalink}) {
-    postSection.classList.add('post-selected');
-    postSection.classList.remove('deselected');
+	postSection.classList.add('post-selected');
+	postSection.classList.remove('deselected');
 
-    const stableInTimeFaceBuffer = facesSideLoader.getFaces().slice(0); // Stable-in-time copy of the full array
-    displayCommentsRecursive(postSection, commentsData, { indent: 0, ppBuffer: stableInTimeFaceBuffer, post: post, commentsEncounteredSoFar: new Set()});
+	const stableInTimeFaceBuffer = facesSideLoader.getFaces().slice(0); // Stable-in-time copy of the full array
+	displayCommentsRecursive(postSection, commentsData, { indent: 0, ppBuffer: stableInTimeFaceBuffer, post: post, commentsEncounteredSoFar: new Set()});
 }
 
 let sortButton = document.querySelector('.post-header-button.sort') as HTMLElement;
 let sortMenu = document.querySelector('.sort-menu') as HTMLElement;
 
 sortButton.addEventListener('click', function() {
-    // console.log(sortMenu.style.display)
-    if (sortMenu.style.display == 'none' || sortMenu.style.display == '') {
-        // sortButton.style.backgroundColor = '#000';
-        sortButton.classList.add('opened');
-        sortMenu.style.display = 'flex';
-    } else {
-        sortButton.classList.remove('opened');
-        sortMenu.style.display = 'none';
-        let sortTopMenu = document.querySelector('.sort-top-menu') as HTMLButtonElement;
-        sortTopMenu.style.display = 'none';
-        // sortButton.style.backgroundColor = 'var(--background-color-2)'
-    }
+	// console.log(sortMenu.style.display)
+	if (sortMenu.style.display == 'none' || sortMenu.style.display == '') {
+		// sortButton.style.backgroundColor = '#000';
+		sortButton.classList.add('opened');
+		sortMenu.style.display = 'flex';
+	} else {
+		sortButton.classList.remove('opened');
+		sortMenu.style.display = 'none';
+		let sortTopMenu = document.querySelector('.sort-top-menu') as HTMLButtonElement;
+		sortTopMenu.style.display = 'none';
+		// sortButton.style.backgroundColor = 'var(--background-color-2)'
+	}
 })
 
 
 let sortHot = document.querySelector('.sort-button.hot') as HTMLButtonElement;
 sortHot.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'hot', subreddit: sortButton.id, sortType: null})
+	return fetchAndDisplaySub({tab:'hot', subreddit: sortButton.id, sortType: null})
 })
 
 let sortNew = document.querySelector('.sort-button.new') as HTMLButtonElement;
 sortNew.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'new', subreddit: sortButton.id, sortType: null})
+	return fetchAndDisplaySub({tab:'new', subreddit: sortButton.id, sortType: null})
 })
 
 let sortRising = document.querySelector('.sort-button.rising') as HTMLButtonElement;
 sortRising.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'rising', subreddit: sortButton.id, sortType: null})
+	return fetchAndDisplaySub({tab:'rising', subreddit: sortButton.id, sortType: null})
 })
 let sortTopMenu = document.querySelector('.sort-top-menu') as HTMLButtonElement;
 
 let topButton = document.querySelector('.sort-button.top') as HTMLButtonElement;
 topButton.addEventListener('click', function() {
-    if ((sortTopMenu.style.display == 'none' || sortTopMenu.style.display == '') && sortMenu.style.display == 'flex') {
-        sortTopMenu.style.display = 'flex';
-    } else {
-        sortTopMenu.style.display = 'none';
-    }
+	if ((sortTopMenu.style.display == 'none' || sortTopMenu.style.display == '') && sortMenu.style.display == 'flex') {
+		sortTopMenu.style.display = 'flex';
+	} else {
+		sortTopMenu.style.display = 'none';
+	}
 })
 
 // when adding a new theme in css, remember to add the theme class name to this list
 let themeNames=['defaultTheme', 'theme1', 'theme2', 'theme3', 'theme4', 'theme5', 
-                'theme6', 'theme7', 'theme8', 'theme9', 'theme10', 'theme11', 
-                'theme12', 'theme13', 'theme14', 'theme15', 'theme16', 'theme17',
-                'theme18', 'theme19', 'theme20', 'theme21', 'theme22']
+				'theme6', 'theme7', 'theme8', 'theme9', 'theme10', 'theme11', 
+				'theme12', 'theme13', 'theme14', 'theme15', 'theme16', 'theme17',
+				'theme18', 'theme19', 'theme20', 'theme21', 'theme22']
 
 
 let themes = document.querySelector('.theme-grid-container') as HTMLElement;
 
 for (let theme of themes.children) {
-    theme.addEventListener('click', function() {
-        let themeName = theme.classList[1];
-        // console.log('APPLYING THEME:', themeName);
-        removeThemeSelected()
-        document.body.classList.remove(...themeNames);
-        if (!theme.classList.contains('selected')) {
-            document.body.classList.add(themeName);
-            theme.classList.add('selected');
-            localStorage.setItem('currentTheme', themeName);
-        } else {
-            theme.classList.remove('selected');
-            document.body.classList.remove(themeName);
-            localStorage.setItem('currentTheme', '');
-        }
-    })
+	theme.addEventListener('click', function() {
+		let themeName = theme.classList[1];
+		// console.log('APPLYING THEME:', themeName);
+		removeThemeSelected()
+		document.body.classList.remove(...themeNames);
+		if (!theme.classList.contains('selected')) {
+			document.body.classList.add(themeName);
+			theme.classList.add('selected');
+			localStorage.setItem('currentTheme', themeName);
+		} else {
+			theme.classList.remove('selected');
+			document.body.classList.remove(themeName);
+			localStorage.setItem('currentTheme', '');
+		}
+	})
 }
 
 function applySavedTheme() {
-    if (localStorage.getItem('currentTheme')) {
-        let currentTheme = localStorage.getItem('currentTheme');
-        removeThemeSelected();
-        document.body.classList.remove(...themeNames);
-        document.querySelector(`.theme-button.${currentTheme}`).classList.add('selected');
-        document.body.classList.add(currentTheme);
-    } else {
-        document.body.classList.remove(...themeNames);
-        document.body.classList.add('defaultTheme');
-    }
+	if (localStorage.getItem('currentTheme')) {
+		let currentTheme = localStorage.getItem('currentTheme');
+		removeThemeSelected();
+		document.body.classList.remove(...themeNames);
+		document.querySelector(`.theme-button.${currentTheme}`).classList.add('selected');
+		document.body.classList.add(currentTheme);
+	} else {
+		document.body.classList.remove(...themeNames);
+		document.body.classList.add('defaultTheme');
+	}
 }
 
 function removeThemeSelected() {
-    for (let theme of themes.children) {
-        theme.classList.remove('selected');
-    }
-    // (document.querySelector('.navbar') as HTMLElement).style.backgroundImage = 'none';
+	for (let theme of themes.children) {
+		theme.classList.remove('selected');
+	}
+	// (document.querySelector('.navbar') as HTMLElement).style.backgroundImage = 'none';
 }
 
 let roomyButton = document.querySelector('.display-density-button.roomy') as HTMLElement;
@@ -754,614 +754,614 @@ let cozyButton = document.querySelector('.display-density-button.cozy') as HTMLE
 let compactButton = document.querySelector('.display-density-button.compact') as HTMLElement;
 
 roomyButton.addEventListener('click', function() {
-    localStorage.setItem('displayDensity', 'roomy');
-    cozyButton.classList.remove('selected');
-    compactButton.classList.remove('selected');
-    roomyButton.classList.add('selected');
-    document.body.classList.remove('cozy', 'compact');
-    document.body.classList.add('roomy');
+	localStorage.setItem('displayDensity', 'roomy');
+	cozyButton.classList.remove('selected');
+	compactButton.classList.remove('selected');
+	roomyButton.classList.add('selected');
+	document.body.classList.remove('cozy', 'compact');
+	document.body.classList.add('roomy');
 })
 
 cozyButton.addEventListener('click', function() {
-    localStorage.setItem('displayDensity', 'cozy');
-    roomyButton.classList.remove('selected');
-    compactButton.classList.remove('selected');
-    cozyButton.classList.add('selected');
-    document.body.classList.remove('compact', 'roomy');
-    document.body.classList.add('cozy');
+	localStorage.setItem('displayDensity', 'cozy');
+	roomyButton.classList.remove('selected');
+	compactButton.classList.remove('selected');
+	cozyButton.classList.add('selected');
+	document.body.classList.remove('compact', 'roomy');
+	document.body.classList.add('cozy');
 })
 
 compactButton.addEventListener('click', function() {
-    localStorage.setItem('displayDensity', 'compact');
-    roomyButton.classList.remove('selected');
-    cozyButton.classList.remove('selected');
-    compactButton.classList.add('selected');
-    document.body.classList.remove('cozy', 'roomy');
-    document.body.classList.add('compact');
+	localStorage.setItem('displayDensity', 'compact');
+	roomyButton.classList.remove('selected');
+	cozyButton.classList.remove('selected');
+	compactButton.classList.add('selected');
+	document.body.classList.remove('cozy', 'roomy');
+	document.body.classList.add('compact');
 })
 
 function setDisplayDensity() {
-    if (localStorage.getItem('displayDensity')) {
-        let displayDensity = localStorage.getItem('displayDensity');
-        document.body.classList.add(displayDensity);
-        roomyButton.classList.remove('selected');
-        cozyButton.classList.remove('selected');
-        compactButton.classList.remove('selected');
-        document.querySelector(`.display-density-button.${displayDensity}`).classList.add('selected');
-    }
+	if (localStorage.getItem('displayDensity')) {
+		let displayDensity = localStorage.getItem('displayDensity');
+		document.body.classList.add(displayDensity);
+		roomyButton.classList.remove('selected');
+		cozyButton.classList.remove('selected');
+		compactButton.classList.remove('selected');
+		document.querySelector(`.display-density-button.${displayDensity}`).classList.add('selected');
+	}
 }
 
 
 let sortTopDay = document.querySelector('.sort-button.today') as HTMLButtonElement;
 sortTopDay.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'top', sortType: 'day', subreddit: sortButton.id})
+	return fetchAndDisplaySub({tab:'top', sortType: 'day', subreddit: sortButton.id})
 })
 
 let sortTopWeek = document.querySelector('.sort-button.week') as HTMLButtonElement;
 sortTopWeek.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'top', sortType: 'week', subreddit: sortButton.id})
+	return fetchAndDisplaySub({tab:'top', sortType: 'week', subreddit: sortButton.id})
 })
 
 let sortTopMonth = document.querySelector('.sort-button.month') as HTMLButtonElement;
 sortTopMonth.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'top', sortType: 'month', subreddit: sortButton.id})
+	return fetchAndDisplaySub({tab:'top', sortType: 'month', subreddit: sortButton.id})
 })
 
 let sortTopYear = document.querySelector('.sort-button.year') as HTMLButtonElement;
 sortTopYear.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'top', sortType: 'year', subreddit: sortButton.id})
+	return fetchAndDisplaySub({tab:'top', sortType: 'year', subreddit: sortButton.id})
 })
 
 let sortTopAll = document.querySelector('.sort-button.all-time') as HTMLButtonElement;
 sortTopAll.addEventListener('click', async function() {
-    return fetchAndDisplaySub({tab:'top', sortType: 'all', subreddit: sortButton.id})
+	return fetchAndDisplaySub({tab:'top', sortType: 'all', subreddit: sortButton.id})
 })
 
 async function fetchData<T>(url: string): Promise<T> {
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error('Network response was not ok' + response.statusText);
-    }
-    const data: T = await response.json();
-    return data;
+	const response = await fetch(url);
+	if (!response.ok) {
+		throw new Error('Network response was not ok' + response.statusText);
+	}
+	const data: T = await response.json();
+	return data;
 }
 
 function isValidURL(url: string) {
-    try {
-        const a = new URL(url);
-    } catch (e) {
-        return false;
-    }
-    return true;
+	try {
+		const a = new URL(url);
+	} catch (e) {
+		return false;
+	}
+	return true;
 }
 
 interface subredditQuery {
-    sortType: null | "all" | "hour" | "day" | "week" | "month" | "year"
-    tab: "hot" | "new" | "rising" | "controversial" | "top" | "gilded"
-    subreddit: string
+	sortType: null | "all" | "hour" | "day" | "week" | "month" | "year"
+	tab: "hot" | "new" | "rising" | "controversial" | "top" | "gilded"
+	subreddit: string
 }
 async function fetchAndDisplaySub({sortType=null, tab="hot", subreddit}: subredditQuery) {
-    clearPostsList();
-    sortMenu.style.display = 'none';
-    sortTopMenu.style.display = 'none';
-    sortButton.classList.remove('opened');
-    const posts = await fetchData<Listing<Post>>(`${redditBaseURL}/r/${subreddit}/${tab}/.json?t=${sortType}`);
-    const responseData = posts.data.children;
+	clearPostsList();
+	sortMenu.style.display = 'none';
+	sortTopMenu.style.display = 'none';
+	sortButton.classList.remove('opened');
+	const posts = await fetchData<Listing<Post>>(`${redditBaseURL}/r/${subreddit}/${tab}/.json?t=${sortType}`);
+	const responseData = posts.data.children;
 
-    try {
-        const subredditInformation: SubredditDetails = await fetchData<SubredditDetails>(`${redditBaseURL}/r/${subreddit}/about.json`);
-        console.log("Response from about.json: ", subredditInformation);
-        displayPosts(responseData, sortButton.id, subredditInformation);
-    } catch (e) {
-        displayPosts(responseData, sortButton.id);
-        console.error(e);
-    }
+	try {
+		const subredditInformation: SubredditDetails = await fetchData<SubredditDetails>(`${redditBaseURL}/r/${subreddit}/about.json`);
+		console.log("Response from about.json: ", subredditInformation);
+		displayPosts(responseData, sortButton.id, subredditInformation);
+	} catch (e) {
+		displayPosts(responseData, sortButton.id);
+		console.error(e);
+	}
 }
 
 function isCrosspost(post: PostData) {
-    return (typeof post.crosspost_parent_list === "object") && post.crosspost_parent_list.length > 0;
+	return (typeof post.crosspost_parent_list === "object") && post.crosspost_parent_list.length > 0;
 }
 
 function isImage(post: PostData) {
-    if (isCrosspost(post)) {
-        return false;
-    }
+	if (isCrosspost(post)) {
+		return false;
+	}
 
-    if (post.post_hint === 'image' || post.domain === "i.redd.it") {
-        return true;
-    }
+	if (post.post_hint === 'image' || post.domain === "i.redd.it") {
+		return true;
+	}
 
-    if (post.url_overridden_by_dest !== undefined) {
-        let url = undefined;
-        try {
-            url = new URL(post.url_overridden_by_dest);
-        } catch (_) {
-            console.log("url_overridden_by_dest contained something weird", post.url_overridden_by_dest);
-            return false;
-        }
-        return url.host === "i.redd.it";
-    }
+	if (post.url_overridden_by_dest !== undefined) {
+		let url = undefined;
+		try {
+			url = new URL(post.url_overridden_by_dest);
+		} catch (_) {
+			console.log("url_overridden_by_dest contained something weird", post.url_overridden_by_dest);
+			return false;
+		}
+		return url.host === "i.redd.it";
+	}
 
-    return false;
+	return false;
 }
 
 function isSelfPost(post: PostData) {
-    return post.is_self;
+	return post.is_self;
 }
 
 function hasSelfText(post: PostData) {
-    return typeof post.selftext == "string" && post.selftext !== "";
+	return typeof post.selftext == "string" && post.selftext !== "";
 }
 
 function createImage(src: string) {
-    if (localStorage.getItem('hideMedia') !== null && localStorage.getItem('hideMedia') == 'true') {
-        return;
-    }
-    let image = document.createElement('img');
-    image.src = src;
-    image.classList.add('post-image');
-    return image
+	if (localStorage.getItem('hideMedia') !== null && localStorage.getItem('hideMedia') == 'true') {
+		return;
+	}
+	let image = document.createElement('img');
+	image.src = src;
+	image.classList.add('post-image');
+	return image
 }
 
 function renderThumbnail(post: PostData): HTMLImageElement {
-    const thumbnail = document.createElement('img');
-    console.log(post.preview);
-    if (!post.preview) {
-        thumbnail.src = post.thumbnail;
-        return thumbnail
-    }
+	const thumbnail = document.createElement('img');
+	console.log(post.preview);
+	if (!post.preview) {
+		thumbnail.src = post.thumbnail;
+		return thumbnail
+	}
 
-    // Find the smallest suitable resolution
-    function choosePreview(preview) {
-        for (const resolution of preview.resolutions) {
-            if (resolution.height >= 75) {
-                return resolution;
-            }
-        }
-        return preview.source;
-    }
-    const preview = choosePreview(post.preview.images[0]);
-    thumbnail.src = decodeHTML(preview.url);
-    console.log("thumbnail", thumbnail);
-    return thumbnail;
+	// Find the smallest suitable resolution
+	function choosePreview(preview) {
+		for (const resolution of preview.resolutions) {
+			if (resolution.height >= 75) {
+				return resolution;
+			}
+		}
+		return preview.source;
+	}
+	const preview = choosePreview(post.preview.images[0]);
+	thumbnail.src = decodeHTML(preview.url);
+	console.log("thumbnail", thumbnail);
+	return thumbnail;
 }
 
 function embedRedditImages(html: string): string {
-    const virtualElement = document.createElement("div");
-    virtualElement.innerHTML = html;
+	const virtualElement = document.createElement("div");
+	virtualElement.innerHTML = html;
 
-    const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a");
-    for (const link of linksInside) {
-        if (link !== null && isValidURL(link.href)) {
-            const url = new URL(link.href)
-            if (url.host == "preview.redd.it" || url.host == "i.redd.it") {
-                const img = createImage(link.href)
-                if (img) {
-                    link.replaceWith(img);
-                }
-            }
-        }
-    }
+	const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a");
+	for (const link of linksInside) {
+		if (link !== null && isValidURL(link.href)) {
+			const url = new URL(link.href)
+			if (url.host == "preview.redd.it" || url.host == "i.redd.it") {
+				const img = createImage(link.href)
+				if (img) {
+					link.replaceWith(img);
+				}
+			}
+		}
+	}
 
-    return virtualElement.innerHTML;
+	return virtualElement.innerHTML;
 }
 
 function fixLocalLinks(html: string): string {
-    const virtualElement = document.createElement("div");
-    virtualElement.innerHTML = html;
+	const virtualElement = document.createElement("div");
+	virtualElement.innerHTML = html;
 
-    const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a");
-    for (const link of linksInside) {
-        if (link !== null && isValidURL(link.href)) {
-            const url = new URL(link.href);
-            if (url.host === "") { // Link to a relative path e.g. /r/something, /, /login
-                link.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}#${url.pathname}`
-            }
-        }
-    }
+	const linksInside = virtualElement.querySelectorAll<HTMLAnchorElement>("a");
+	for (const link of linksInside) {
+		if (link !== null && isValidURL(link.href)) {
+			const url = new URL(link.href);
+			if (url.host === "") { // Link to a relative path e.g. /r/something, /, /login
+				link.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}#${url.pathname}`
+			}
+		}
+	}
 
-    return virtualElement.innerHTML;
+	return virtualElement.innerHTML;
 }
 
 function renderPost(post: PostData): HTMLDivElement {
-    const container = document.createElement('div');
-    container.classList.add('post-contents')
+	const container = document.createElement('div');
+	container.classList.add('post-contents')
 
-    if (isCrosspost(post)) {
-        if (isDebugMode()) console.log("Post is crosspost");
-        const row = document.createElement('div');
-        container.appendChild(row);
-        const thumbnail = renderThumbnail(post);
-        row.append(thumbnail);
-        const link = document.createElement('a');
-        row.append(link);
+	if (isCrosspost(post)) {
+		if (isDebugMode()) console.log("Post is crosspost");
+		const row = document.createElement('div');
+		container.appendChild(row);
+		const thumbnail = renderThumbnail(post);
+		row.append(thumbnail);
+		const link = document.createElement('a');
+		row.append(link);
 
-        const crosspost: PostData | undefined = (post.crosspost_parent_list || [])[0];
+		const crosspost: PostData | undefined = (post.crosspost_parent_list || [])[0];
 
-        const urlCandidate = crosspost?.permalink || post.url_overridden_by_dest;
-        if (isValidURL(urlCandidate)) {
-            link.href = urlCandidate;
-        } else {
-            link.href = `${redditBaseURL}${urlCandidate}`;
-        }
-        link.innerText = crosspost?.title;
-        link.target = "_blank";
-        link.classList.add('post-link');
-        container.classList.add('post-link-container')
-        row.classList.add('post-link-container-row')
-        const xPost = renderPost(crosspost);
-        container.appendChild(xPost);
-        return container;
-    }
+		const urlCandidate = crosspost?.permalink || post.url_overridden_by_dest;
+		if (isValidURL(urlCandidate)) {
+			link.href = urlCandidate;
+		} else {
+			link.href = `${redditBaseURL}${urlCandidate}`;
+		}
+		link.innerText = crosspost?.title;
+		link.target = "_blank";
+		link.classList.add('post-link');
+		container.classList.add('post-link-container')
+		row.classList.add('post-link-container-row')
+		const xPost = renderPost(crosspost);
+		container.appendChild(xPost);
+		return container;
+	}
 
-    if (isImage(post)) {
-        if (isDebugMode()) console.log("Post is image");
-        const image = createImage(post.url_overridden_by_dest);
-        container.append(image);
-    } 
-    else if (isSelfPost(post)) {
-        if (isDebugMode()) console.log("Post is self post");
-    } 
-    else {
-        if (isDebugMode()) console.log("Post is something else");
-        const row = document.createElement('div');
-        container.append(row)
-        const thumbnail = document.createElement('img');
-        const link = document.createElement('a');
+	if (isImage(post)) {
+		if (isDebugMode()) console.log("Post is image");
+		const image = createImage(post.url_overridden_by_dest);
+		container.append(image);
+	} 
+	else if (isSelfPost(post)) {
+		if (isDebugMode()) console.log("Post is self post");
+	} 
+	else {
+		if (isDebugMode()) console.log("Post is something else");
+		const row = document.createElement('div');
+		container.append(row)
+		const thumbnail = document.createElement('img');
+		const link = document.createElement('a');
 
-        thumbnail.src = post.thumbnail;
-        thumbnail.onerror = () => {
-            thumbnail.src = 'https://img.icons8.com/3d-fluency/512/news.png';
-        };
-        link.href = post.url_overridden_by_dest;
-        link.innerText = post.title;
-        link.target = "_blank";
-        link.classList.add('post-link');
-        row.append(thumbnail);
-        row.append(link);
-        row.classList.add('post-link-container-row')
-        container.classList.add('post-link-container')
-    }
+		thumbnail.src = post.thumbnail;
+		thumbnail.onerror = () => {
+			thumbnail.src = 'https://img.icons8.com/3d-fluency/512/news.png';
+		};
+		link.href = post.url_overridden_by_dest;
+		link.innerText = post.title;
+		link.target = "_blank";
+		link.classList.add('post-link');
+		row.append(thumbnail);
+		row.append(link);
+		row.classList.add('post-link-container-row')
+		container.classList.add('post-link-container')
+	}
 
-    if (hasSelfText(post)) {
-        if (isDebugMode()) console.log("Post has self text");
-        const selfpostHtml = embedRedditImages(decodeHTML(post.selftext_html));
-        const selftext = document.createElement('div');
-        selftext.innerHTML = selfpostHtml;
-        selftext.classList.add("usertext");
-    
-        container.append(selftext);
-    }
+	if (hasSelfText(post)) {
+		if (isDebugMode()) console.log("Post has self text");
+		const selfpostHtml = embedRedditImages(decodeHTML(post.selftext_html));
+		const selftext = document.createElement('div');
+		selftext.innerHTML = selfpostHtml;
+		selftext.classList.add("usertext");
+	
+		container.append(selftext);
+	}
 
-    const redditVideo = post.secure_media?.reddit_video;
-    if (redditVideo !== undefined) {
-        if (isDebugMode()) console.log("Post has video");
-        const video = document.createElement('video');
-        video.classList.add('post-video');
-        video.setAttribute('controls', '')
-        const source = document.createElement('source');
-        source.src = post.secure_media.reddit_video.fallback_url;
-        video.appendChild(source);
-        if (localStorage.getItem('hideMedia') == 'false' || localStorage.getItem('hideMedia') == null) {
-            container.append(video);
-        }
-    }
+	const redditVideo = post.secure_media?.reddit_video;
+	if (redditVideo !== undefined) {
+		if (isDebugMode()) console.log("Post has video");
+		const video = document.createElement('video');
+		video.classList.add('post-video');
+		video.setAttribute('controls', '')
+		const source = document.createElement('source');
+		source.src = post.secure_media.reddit_video.fallback_url;
+		video.appendChild(source);
+		if (localStorage.getItem('hideMedia') == 'false' || localStorage.getItem('hideMedia') == null) {
+			container.append(video);
+		}
+	}
 
-    return container;
+	return container;
 }
 
 function showPostFromData(response: ApiObj) {
-    try {
-        // reset scroll position when user clicks on a new post
-        let redditPost: HTMLElement = strictQuerySelector('.reddit-post');
-        redditPost.scrollTop = 0;
-    } catch (e) {
-        console.error(e);
-    }
+	try {
+		// reset scroll position when user clicks on a new post
+		let redditPost: HTMLElement = strictQuerySelector('.reddit-post');
+		redditPost.scrollTop = 0;
+	} catch (e) {
+		console.error(e);
+	}
 
-    const comments: SnooComment[] = response[1].data.children;
-    const post: Post = response[0].data.children[0];
+	const comments: SnooComment[] = response[1].data.children;
+	const post: Post = response[0].data.children[0];
 
-    const author = document.createElement('span');
-    author.append(`Posted by u/${response[0].data.children[0].data.author}`);
-    author.classList.add('post-author')
-    postSection.append(author);
-    const title = document.createElement('h4')
-    const titleLink = document.createElement('a');
-    title.appendChild(titleLink);
-    const titleText = post.data.title
-    titleLink.href = `${redditBaseURL}${post.data.permalink}`;
-    titleLink.append(titleText);
-    title.classList.add('post-section-title');
-    postSection.append(title);
+	const author = document.createElement('span');
+	author.append(`Posted by u/${response[0].data.children[0].data.author}`);
+	author.classList.add('post-author')
+	postSection.append(author);
+	const title = document.createElement('h4')
+	const titleLink = document.createElement('a');
+	title.appendChild(titleLink);
+	const titleText = post.data.title
+	titleLink.href = `${redditBaseURL}${post.data.permalink}`;
+	titleLink.append(titleText);
+	title.classList.add('post-section-title');
+	postSection.append(title);
 
-    let container = renderPost(post.data);
-    postSection.append(container);
-    
-    const postDetails = getPostDetails(response)
-    postSection.append(...postDetails)
-    postSection.append(document.createElement('hr'));
+	let container = renderPost(post.data);
+	postSection.append(container);
+	
+	const postDetails = getPostDetails(response)
+	postSection.append(...postDetails)
+	postSection.append(document.createElement('hr'));
 
-    displayComments(comments, { post: post.data.permalink });
+	displayComments(comments, { post: post.data.permalink });
 }
 
 document.body.addEventListener('keydown', (event) => {
-    // console.log(event.key)
-    if (event.key === 'Escape') {
-        clearPostSection();
-    }
+	// console.log(event.key)
+	if (event.key === 'Escape') {
+		clearPostSection();
+	}
 })
 
 function getPostDetails(response: any) {
-    let upvotes = document.createElement('span');
-    upvotes.innerHTML = '<svg width="15px" height="15px" style="margin-right: 5px;" viewBox="0 0 94 97" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M88.1395 48.8394C84.9395 46.0394 60.4728 18.0061 48.6395 4.33939C46.6395 3.53939 45.1395 4.33939 44.6395 4.83939L4.63948 49.3394C2.1394 53.3394 7.63948 52.8394 9.63948 52.8394H29.1395V88.8394C29.1395 92.0394 32.1395 93.1727 33.6395 93.3394H58.1395C63.3395 93.3394 64.3062 90.3394 64.1395 88.8394V52.3394H87.1395C88.8061 52.0061 91.3395 51.6394 88.1395 48.8394Z" stroke="#818384" stroke-width="7"/></svg>'
-    upvotes.append(`${response[0].data.children[0].data.ups.toLocaleString()}`);
-    upvotes.innerHTML += '<svg width="15px" height="15px" style="transform: rotate(180deg); margin-left: 5px" viewBox="0 0 94 97" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M88.1395 48.8394C84.9395 46.0394 60.4728 18.0061 48.6395 4.33939C46.6395 3.53939 45.1395 4.33939 44.6395 4.83939L4.63948 49.3394C2.1394 53.3394 7.63948 52.8394 9.63948 52.8394H29.1395V88.8394C29.1395 92.0394 32.1395 93.1727 33.6395 93.3394H58.1395C63.3395 93.3394 64.3062 90.3394 64.1395 88.8394V52.3394H87.1395C88.8061 52.0061 91.3395 51.6394 88.1395 48.8394Z" stroke="#818384" stroke-width="7"/></svg>'
-    upvotes.classList.add('post-detail-info')
-    let subreddit = document.createElement('a');
-    subreddit.classList.add('post-detail-info');
-    subreddit.href = `#/${response[0].data.children[0].data.subreddit_name_prefixed}`;
-    subreddit.append(response[0].data.children[0].data.subreddit_name_prefixed);
-    let numComments = document.createElement('span');
-    numComments.append(`${response[0].data.children[0].data.num_comments.toLocaleString()} Comments`);
-    numComments.classList.add('post-detail-info')
-    let author = document.createElement('span');
-    author.append(`Posted by u/${response[0].data.children[0].data.author}`);
-    
-    const blockSubreddit = document.createElement('span');
-    blockSubreddit.innerHTML = 'Block subreddit'
-    blockSubreddit.classList.add('post-detail-info')
-    blockSubreddit.style.cursor = "help"
-    blockSubreddit.title = `Block ${response[0].data.children[0].data.subreddit}`;
-    blockSubreddit.addEventListener('click', () => {
-        blockSubreddit.remove();
-        block(response[0].data.children[0].data.subreddit);
-    });
+	let upvotes = document.createElement('span');
+	upvotes.innerHTML = '<svg width="15px" height="15px" style="margin-right: 5px;" viewBox="0 0 94 97" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M88.1395 48.8394C84.9395 46.0394 60.4728 18.0061 48.6395 4.33939C46.6395 3.53939 45.1395 4.33939 44.6395 4.83939L4.63948 49.3394C2.1394 53.3394 7.63948 52.8394 9.63948 52.8394H29.1395V88.8394C29.1395 92.0394 32.1395 93.1727 33.6395 93.3394H58.1395C63.3395 93.3394 64.3062 90.3394 64.1395 88.8394V52.3394H87.1395C88.8061 52.0061 91.3395 51.6394 88.1395 48.8394Z" stroke="#818384" stroke-width="7"/></svg>'
+	upvotes.append(`${response[0].data.children[0].data.ups.toLocaleString()}`);
+	upvotes.innerHTML += '<svg width="15px" height="15px" style="transform: rotate(180deg); margin-left: 5px" viewBox="0 0 94 97" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M88.1395 48.8394C84.9395 46.0394 60.4728 18.0061 48.6395 4.33939C46.6395 3.53939 45.1395 4.33939 44.6395 4.83939L4.63948 49.3394C2.1394 53.3394 7.63948 52.8394 9.63948 52.8394H29.1395V88.8394C29.1395 92.0394 32.1395 93.1727 33.6395 93.3394H58.1395C63.3395 93.3394 64.3062 90.3394 64.1395 88.8394V52.3394H87.1395C88.8061 52.0061 91.3395 51.6394 88.1395 48.8394Z" stroke="#818384" stroke-width="7"/></svg>'
+	upvotes.classList.add('post-detail-info')
+	let subreddit = document.createElement('a');
+	subreddit.classList.add('post-detail-info');
+	subreddit.href = `#/${response[0].data.children[0].data.subreddit_name_prefixed}`;
+	subreddit.append(response[0].data.children[0].data.subreddit_name_prefixed);
+	let numComments = document.createElement('span');
+	numComments.append(`${response[0].data.children[0].data.num_comments.toLocaleString()} Comments`);
+	numComments.classList.add('post-detail-info')
+	let author = document.createElement('span');
+	author.append(`Posted by u/${response[0].data.children[0].data.author}`);
+	
+	const blockSubreddit = document.createElement('span');
+	blockSubreddit.innerHTML = 'Block subreddit'
+	blockSubreddit.classList.add('post-detail-info')
+	blockSubreddit.style.cursor = "help"
+	blockSubreddit.title = `Block ${response[0].data.children[0].data.subreddit}`;
+	blockSubreddit.addEventListener('click', () => {
+		blockSubreddit.remove();
+		block(response[0].data.children[0].data.subreddit);
+	});
 
-    author.classList.add('post-detail-info')
+	author.classList.add('post-detail-info')
 
-    return [upvotes, subreddit, numComments, author, blockSubreddit];
+	return [upvotes, subreddit, numComments, author, blockSubreddit];
 }
 
 async function generateGnomePic(): Promise<HTMLImageElement> {
-    const gnome = document.createElement<"img">("img");
-    gnome.classList.add("gnome");
+	const gnome = document.createElement<"img">("img");
+	gnome.classList.add("gnome");
 
-    // Potential Hmirror 
-    const flipSeed = await rng.random();
-    const flip = flipSeed <= 0.5 ? "scaleX(-1) " : "";
+	// Potential Hmirror 
+	const flipSeed = await rng.random();
+	const flip = flipSeed <= 0.5 ? "scaleX(-1) " : "";
 
-    // +Random rotation between -20deg +20deg
-    const mirrorSeed = await rng.random();
-    gnome.style.transform = `${flip}rotate(${Math.round(mirrorSeed * 40 - 20)}deg) `;
-    
-    const colorSeed = await rng.random();
-    gnome.style.backgroundColor = colors[Math.floor(colorSeed * colors.length)];
+	// +Random rotation between -20deg +20deg
+	const mirrorSeed = await rng.random();
+	gnome.style.transform = `${flip}rotate(${Math.round(mirrorSeed * 40 - 20)}deg) `;
+	
+	const colorSeed = await rng.random();
+	gnome.style.backgroundColor = colors[Math.floor(colorSeed * colors.length)];
 
-    return gnome;
+	return gnome;
 }
 
 // noinspection JSUnusedLocalSymbols
 async function generateTwoLettersAvatar(commentData: SnooComment, size: number): Promise<HTMLSpanElement> {
-    const textPic = document.createElement<"span">("span");
+	const textPic = document.createElement<"span">("span");
 
-    const pseudoRand1 = await rng.random(0, initials.length-1);
-    const pseudoRand2 = await rng.random(0, initials.length-1);
-    const ppInitials = initials[Math.round(pseudoRand1)] + initials[Math.round(pseudoRand2)];
+	const pseudoRand1 = await rng.random(0, initials.length-1);
+	const pseudoRand2 = await rng.random(0, initials.length-1);
+	const ppInitials = initials[Math.round(pseudoRand1)] + initials[Math.round(pseudoRand2)];
 
-    textPic.style.fontWeight = "600";
-    textPic.style.fontSize = "16px";
-    textPic.style.lineHeight = "40px";
-    textPic.style.textAlign = "center";
-    textPic.style.display = "inline-block";
-    textPic.style.cssText += "-webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;";
+	textPic.style.fontWeight = "600";
+	textPic.style.fontSize = "16px";
+	textPic.style.lineHeight = "40px";
+	textPic.style.textAlign = "center";
+	textPic.style.display = "inline-block";
+	textPic.style.cssText += "-webkit-touch-callout: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;";
 
-    const colorSeed = await rng.random(0, colors.length-1);
-    textPic.style.backgroundColor = colors[Math.round(colorSeed)];
-    
-    textPic.textContent = `${ppInitials}`;
-    return textPic;
+	const colorSeed = await rng.random(0, colors.length-1);
+	textPic.style.backgroundColor = colors[Math.round(colorSeed)];
+	
+	textPic.textContent = `${ppInitials}`;
+	return textPic;
 }
 
 function copyImage2Canvas(origin: HTMLImageElement, newSize: number): HTMLCanvasElement | null {
-    const canv: HTMLCanvasElement = document.createElement("canvas");
+	const canv: HTMLCanvasElement = document.createElement("canvas");
 
-    // canvas will sample 4 pixels per pixel displayed then be downsized via css
-    // otherwise if 1px = 1px the picture looks pixelated & jagged
-    // css seems to do a small cubic interpolation when downsizing, and it makes a world of difference
-    canv.height = canv.width = newSize * 2;
+	// canvas will sample 4 pixels per pixel displayed then be downsized via css
+	// otherwise if 1px = 1px the picture looks pixelated & jagged
+	// css seems to do a small cubic interpolation when downsizing, and it makes a world of difference
+	canv.height = canv.width = newSize * 2;
 
-    canv.style.height = canv.style.width = newSize.toString();
-    const ctx: CanvasRenderingContext2D | null = canv.getContext('2d');
+	canv.style.height = canv.style.width = newSize.toString();
+	const ctx: CanvasRenderingContext2D | null = canv.getContext('2d');
 
-    if (ctx !== null) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.imageSmoothingQuality = "high";
-        try {
-            ctx.drawImage(origin, 0, 0, newSize * 2, newSize * 2);
-        } catch (e) {
-            console.error(origin, e);
-        }
-        
-        return canv;
-    } else {
-        return null;
-    }
+	if (ctx !== null) {
+		ctx.imageSmoothingEnabled = false;
+		ctx.imageSmoothingQuality = "high";
+		try {
+			ctx.drawImage(origin, 0, 0, newSize * 2, newSize * 2);
+		} catch (e) {
+			console.error(origin, e);
+		}
+		
+		return canv;
+	} else {
+		return null;
+	}
 }
 
 async function generateFacePic(commentData: SnooComment, ppBuffer: HTMLImageElement[], displaySize: number = 50): Promise<HTMLCanvasElement> {
-    const imageSeed = Math.round(await rng.random(0, ppBuffer.length-1));
-    const imageElement: HTMLImageElement = ppBuffer[imageSeed];
+	const imageSeed = Math.round(await rng.random(0, ppBuffer.length-1));
+	const imageElement: HTMLImageElement = ppBuffer[imageSeed];
 
-    // Purpose of copying: A single <img> tag cannot be in multiple spots at the same time
-    // I did not find a way to duplicate the reference to an img tag 
-    // If you use Element.appendChild with the same reference multiple times, the method will move the element around
-    // Creating a new <img> tag and copying the attributes would work, but it would fetch the src again
-    // The image at thispersondoesnotexist changes every second so the src points to a new picture now
-    // Since the URL has a parameter and hasn't changed, then most likely, querying the URL again would
-    //     hit the browser's cache. but we can't know that.
-    // Solution: make a canvas and give it the single <img> reference. It makes a new one every time. It doesn't query the src.
-    const canv = copyImage2Canvas(imageElement, displaySize);
-    assert(canv !== null, `generateFacePic couldn't get a canvas 2D context from image #${imageSeed}, ${imageElement.src} (img.${Array.from(imageElement.classList).join(".")})`);
+	// Purpose of copying: A single <img> tag cannot be in multiple spots at the same time
+	// I did not find a way to duplicate the reference to an img tag 
+	// If you use Element.appendChild with the same reference multiple times, the method will move the element around
+	// Creating a new <img> tag and copying the attributes would work, but it would fetch the src again
+	// The image at thispersondoesnotexist changes every second so the src points to a new picture now
+	// Since the URL has a parameter and hasn't changed, then most likely, querying the URL again would
+	//     hit the browser's cache. but we can't know that.
+	// Solution: make a canvas and give it the single <img> reference. It makes a new one every time. It doesn't query the src.
+	const canv = copyImage2Canvas(imageElement, displaySize);
+	assert(canv !== null, `generateFacePic couldn't get a canvas 2D context from image #${imageSeed}, ${imageElement.src} (img.${Array.from(imageElement.classList).join(".")})`);
 
-    canv.classList.add(`human-${imageSeed}`);
-    return canv;
+	canv.classList.add(`human-${imageSeed}`);
+	return canv;
 }
 
 type HTMLProfilePictureElement = HTMLCanvasElement | HTMLImageElement | HTMLSpanElement;
 async function createProfilePicture(commentData: SnooComment, size: number = 50, ppBuffer: HTMLImageElement[] = []): Promise<HTMLProfilePictureElement> {
-    async function helper(): Promise<HTMLProfilePictureElement> {
-        if (commentData.data.subreddit === "gnometalk") {
-            return generateGnomePic();
-        } else {
-            // 0-10  => 0
-            // 10-25 => Between 0 and 0.7
-            // 25+   => 0.7
-            // Don't replace this with a formula filled with Math.min(), 
-            //    divisions and substractions, this is meant to be readable for a beginner
-            const chanceForAFacePic = (() => {
-                if (ppBuffer.length < 10) {
-                    return 0;
-                } else {
-                    const baseValue = 0.7; // Max .7
+	async function helper(): Promise<HTMLProfilePictureElement> {
+		if (commentData.data.subreddit === "gnometalk") {
+			return generateGnomePic();
+		} else {
+			// 0-10  => 0
+			// 10-25 => Between 0 and 0.7
+			// 25+   => 0.7
+			// Don't replace this with a formula filled with Math.min(), 
+			//    divisions and substractions, this is meant to be readable for a beginner
+			const chanceForAFacePic = (() => {
+				if (ppBuffer.length < 10) {
+					return 0;
+				} else {
+					const baseValue = 0.7; // Max .7
 
-                    // What percentage of progress are you between 10 and 25
-                    if (ppBuffer.length >= 25) {
-                        return baseValue;
-                    } else {
-                        return ((ppBuffer.length - 10)/15)*baseValue;
-                    }
-                }
-            })();
+					// What percentage of progress are you between 10 and 25
+					if (ppBuffer.length >= 25) {
+						return baseValue;
+					} else {
+						return ((ppBuffer.length - 10)/15)*baseValue;
+					}
+				}
+			})();
 
-            if ((await rng.random()) < chanceForAFacePic) {
-                return generateFacePic(commentData, ppBuffer);
-            } else {
-                return generateTwoLettersAvatar(commentData, size);
-            }
-        }
-    }
+			if ((await rng.random()) < chanceForAFacePic) {
+				return generateFacePic(commentData, ppBuffer);
+			} else {
+				return generateTwoLettersAvatar(commentData, size);
+			}
+		}
+	}
 
-    const ppElem: HTMLProfilePictureElement = await helper();
+	const ppElem: HTMLProfilePictureElement = await helper();
 
-    ppElem.classList.add("avatar")
-    ppElem.style.marginRight = "10px";
-    if (!ppElem.classList.contains("avatar-circle")) {
-        ppElem.classList.add("avatar-circle");
-    }
-    return ppElem;
+	ppElem.classList.add("avatar")
+	ppElem.style.marginRight = "10px";
+	if (!ppElem.classList.contains("avatar-circle")) {
+		ppElem.classList.add("avatar-circle");
+	}
+	return ppElem;
 }
 
 // localStorage.setItem('showLongAddress', 'true');
 
 type CreateCommentOptions = {
-    ppBuffer: HTMLImageElement[],
-    domNode?: HTMLElement
+	ppBuffer: HTMLImageElement[],
+	domNode?: HTMLElement
 };
 async function createComment(commentData: SnooComment, options: CreateCommentOptions={ppBuffer: []}): Promise<HTMLElement> {
-    if (options.domNode === undefined) {
-        options.domNode = document.createElement('div');
-    }
-    options.domNode.id = commentData.data.id;
-    options.domNode.classList.add("usertext");
+	if (options.domNode === undefined) {
+		options.domNode = document.createElement('div');
+	}
+	options.domNode.id = commentData.data.id;
+	options.domNode.classList.add("usertext");
 
-    // Author parent div
-    const author = document.createElement('div');
-    author.classList.add("author")
-    author.style.display = "flex";
+	// Author parent div
+	const author = document.createElement('div');
+	author.classList.add("author")
+	author.style.display = "flex";
 
-    await rng.setSeed(commentData.data.author);
-    
-    // Placeholder pic
-    const ppSize = 50; //px
-    const pfpPlaceHolder = document.createElement<"span">("span");
-    pfpPlaceHolder.style.width = pfpPlaceHolder.style.height = `${ppSize}px`;
-    author.appendChild(pfpPlaceHolder);
+	await rng.setSeed(commentData.data.author);
+	
+	// Placeholder pic
+	const ppSize = 50; //px
+	const pfpPlaceHolder = document.createElement<"span">("span");
+	pfpPlaceHolder.style.width = pfpPlaceHolder.style.height = `${ppSize}px`;
+	author.appendChild(pfpPlaceHolder);
 
-    // Real Profile pic
-    createProfilePicture(commentData, ppSize, options.ppBuffer).then( (generatedPfp) => {
-        author.replaceChild(generatedPfp, pfpPlaceHolder);
-    });
+	// Real Profile pic
+	createProfilePicture(commentData, ppSize, options.ppBuffer).then( (generatedPfp) => {
+		author.replaceChild(generatedPfp, pfpPlaceHolder);
+	});
 
-    // Author's name and sent date
-    let authorText = document.createElement("div");
-    authorText.classList.add("author-text")
-    authorText.style.display = "flex";
-    authorText.style.flexDirection = "column";
-    {
-        // Name
-        let authorTextInfo = document.createElement("span");
-        authorTextInfo.classList.add("username")
-        authorTextInfo.classList.add("email")
-        const scoreLength = (""+commentData.data.score).length
-        
-        // Email addresses are composed of uuids and hide the score within the first block
-        const format: UUIDFormat = [
-            { n: 8, charset: "alpha" }, // // First section is only letters to avoid ambiguity on the score
-            { n: 4, charset: "alphanumerical" },
-            { n: 4, charset: "alphanumerical" },
-            { n: 4, charset: "alphanumerical" },
-            { n: 12, charset: "alphanumerical" }
-        ];
-        rng.randomUUID(format).then((uuid: UUID) => {
-            const slicedUUID = uuid.slice(scoreLength); // Remove a bunch of letters from the start
+	// Author's name and sent date
+	let authorText = document.createElement("div");
+	authorText.classList.add("author-text")
+	authorText.style.display = "flex";
+	authorText.style.flexDirection = "column";
+	{
+		// Name
+		let authorTextInfo = document.createElement("span");
+		authorTextInfo.classList.add("username")
+		authorTextInfo.classList.add("email")
+		const scoreLength = (""+commentData.data.score).length
+		
+		// Email addresses are composed of uuids and hide the score within the first block
+		const format: UUIDFormat = [
+			{ n: 8, charset: "alpha" }, // // First section is only letters to avoid ambiguity on the score
+			{ n: 4, charset: "alphanumerical" },
+			{ n: 4, charset: "alphanumerical" },
+			{ n: 4, charset: "alphanumerical" },
+			{ n: 12, charset: "alphanumerical" }
+		];
+		rng.randomUUID(format).then((uuid: UUID) => {
+			const slicedUUID = uuid.slice(scoreLength); // Remove a bunch of letters from the start
 
-            // We overwrite the 1st section with the comment's score
-            if (localStorage.getItem('showLongAddress') == 'true' || localStorage.getItem('showLongAddress') == null) {
-                authorTextInfo.innerHTML = `${commentData.data.author} <${commentData.data.score}${slicedUUID}@securemail.org>`;
-            } else {
-                authorTextInfo.innerHTML = `u/${commentData.data.author} (${commentData.data.score})`;
-                authorTextInfo.title = `&lt;${commentData.data.author}@reddit.com&gt;`
-            }
-        })
-        authorText.append(authorTextInfo);
+			// We overwrite the 1st section with the comment's score
+			if (localStorage.getItem('showLongAddress') == 'true' || localStorage.getItem('showLongAddress') == null) {
+				authorTextInfo.innerHTML = `${commentData.data.author} <${commentData.data.score}${slicedUUID}@securemail.org>`;
+			} else {
+				authorTextInfo.innerHTML = `u/${commentData.data.author} (${commentData.data.score})`;
+				authorTextInfo.title = `&lt;${commentData.data.author}@reddit.com&gt;`
+			}
+		})
+		authorText.append(authorTextInfo);
 
-        // Sent date
-        let d = new Date(commentData.data.created_utc*1000);
-        const dateDiv = document.createElement("span");
-        dateDiv.classList.add("comment-posted-date")
-        dateDiv.innerHTML = d.toString().slice(0,21);
-        dateDiv.style.color = "#a2a2a2";
-        dateDiv.style.fontSize = "0.85em";
-        authorText.append(dateDiv);
-    }
-    author.append(authorText);
+		// Sent date
+		let d = new Date(commentData.data.created_utc*1000);
+		const dateDiv = document.createElement("span");
+		dateDiv.classList.add("comment-posted-date")
+		dateDiv.innerHTML = d.toString().slice(0,21);
+		dateDiv.style.color = "#a2a2a2";
+		dateDiv.style.fontSize = "0.85em";
+		authorText.append(dateDiv);
+	}
+	author.append(authorText);
 
-    const commentText = document.createElement('div');
-    commentText.classList.add("comment");
-    commentText.insertAdjacentHTML('beforeend', fixLocalLinks(embedRedditImages(decodeHTML(commentData.data.body_html))));
+	const commentText = document.createElement('div');
+	commentText.classList.add("comment");
+	commentText.insertAdjacentHTML('beforeend', fixLocalLinks(embedRedditImages(decodeHTML(commentData.data.body_html))));
 
-    options.domNode.prepend(author, commentText);
-    return options.domNode
+	options.domNode.prepend(author, commentText);
+	return options.domNode
 }
 
 type SerializedHTML = string;
 function decodeHTML(html: SerializedHTML): SerializedHTML {
-    const txt = document.createElement("textarea");
-    txt.innerHTML = html;
-    return txt.value;
+	const txt = document.createElement("textarea");
+	txt.innerHTML = html;
+	return txt.value;
 }
 
 function clearPost() {
-    postSection.innerHTML = '';
-    sortMenu.style.display = 'none';
-    sortTopMenu.style.display = 'none';
-    sortButton.classList.remove('opened');
-    subredditInfoContainer.style.display = 'none';
-    headerButtons.style.borderRadius = "4px 4px 0px 0px";
+	postSection.innerHTML = '';
+	sortMenu.style.display = 'none';
+	sortTopMenu.style.display = 'none';
+	sortButton.classList.remove('opened');
+	subredditInfoContainer.style.display = 'none';
+	headerButtons.style.borderRadius = "4px 4px 0px 0px";
 }
 
 function clearPostSection() {
-    postSection.innerHTML = '';
+	postSection.innerHTML = '';
 }
 
 function clearPostsList() {
-    const posts = document.querySelector('#posts');
-    if (posts !== null) {
-        posts.innerHTML = '';
-        subredditInfoContainer.style.display = 'none';
-        headerButtons.style.borderRadius = "4px 4px 0px 0px";
-    }
+	const posts = document.querySelector('#posts');
+	if (posts !== null) {
+		posts.innerHTML = '';
+		subredditInfoContainer.style.display = 'none';
+		headerButtons.style.borderRadius = "4px 4px 0px 0px";
+	}
 }
 
 
@@ -1370,70 +1370,70 @@ const subredditName: HTMLInputElement = strictQuerySelector('input');
 const subredditSection: HTMLElement = strictQuerySelector('.your-subreddits')
 
 searchForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    showSubreddit(subredditName.value);
-    // let subredditBtn: HTMLButtonElement = document.createElement<"button">('button');
-    // subredditBtn.classList.add('subreddit', 'button');
-    // subredditBtn.id = subredditName.value;
-    // subredditBtn.addEventListener('click', async () => {
-    //     clearPost();
-    //     if (isDebugMode()) console.log("custom sub click", subredditBtn.id);
-    //     setURLAnchor(`/r/${subredditBtn.id}`);
-    //     showSubreddit(subredditBtn.id);
-    // })
-    // // document.cookie.subreddits.append(subreddit.value);
-    // if (localStorage.getItem('savedSubreddits')) {
-    //     let savedSubreddits = localStorage.getItem('savedSubreddits');
-    //     savedSubreddits += `,${subredditName.value}`;
-    //     localStorage.setItem('savedSubreddits', savedSubreddits);
-    // } else {
-    //     localStorage.setItem('savedSubreddits', subredditName.value);
-    // }
-    // subredditBtn.append('r/' + subredditName.value);
-    // subredditSection.append(subredditBtn);
-    // subredditName.value = '';
-    (document.querySelector('.search-results') as HTMLElement).style.display = 'none';
-    // subredditName.value = '';
+	event.preventDefault();
+	showSubreddit(subredditName.value);
+	// let subredditBtn: HTMLButtonElement = document.createElement<"button">('button');
+	// subredditBtn.classList.add('subreddit', 'button');
+	// subredditBtn.id = subredditName.value;
+	// subredditBtn.addEventListener('click', async () => {
+	//     clearPost();
+	//     if (isDebugMode()) console.log("custom sub click", subredditBtn.id);
+	//     setURLAnchor(`/r/${subredditBtn.id}`);
+	//     showSubreddit(subredditBtn.id);
+	// })
+	// // document.cookie.subreddits.append(subreddit.value);
+	// if (localStorage.getItem('savedSubreddits')) {
+	//     let savedSubreddits = localStorage.getItem('savedSubreddits');
+	//     savedSubreddits += `,${subredditName.value}`;
+	//     localStorage.setItem('savedSubreddits', savedSubreddits);
+	// } else {
+	//     localStorage.setItem('savedSubreddits', subredditName.value);
+	// }
+	// subredditBtn.append('r/' + subredditName.value);
+	// subredditSection.append(subredditBtn);
+	// subredditName.value = '';
+	(document.querySelector('.search-results') as HTMLElement).style.display = 'none';
+	// subredditName.value = '';
 })
 
 function displaySavedSubreddits() {
-    let savedSubreddits = getSavedSubreddits()    
-    if (savedSubreddits) {
-        for (let savedSubreddit of savedSubreddits) {
-            let subredditBtn = document.createElement('button');
-            subredditBtn.classList.add('subreddit', 'button');
-            subredditBtn.id = savedSubreddit;
-            subredditBtn.addEventListener('click', async () => {
-                clearPost();
-                if (isDebugMode()) console.log("custom sub click", subredditBtn.id);
-                setURLAnchor(`/r/${subredditBtn.id}`);
-                showSubreddit(subredditBtn.id);
-            })
-            subredditBtn.append('r/' + savedSubreddit);
-            subredditSection.append(subredditBtn);
-        }
-    }
+	let savedSubreddits = getSavedSubreddits()    
+	if (savedSubreddits) {
+		for (let savedSubreddit of savedSubreddits) {
+			let subredditBtn = document.createElement('button');
+			subredditBtn.classList.add('subreddit', 'button');
+			subredditBtn.id = savedSubreddit;
+			subredditBtn.addEventListener('click', async () => {
+				clearPost();
+				if (isDebugMode()) console.log("custom sub click", subredditBtn.id);
+				setURLAnchor(`/r/${subredditBtn.id}`);
+				showSubreddit(subredditBtn.id);
+			})
+			subredditBtn.append('r/' + savedSubreddit);
+			subredditSection.append(subredditBtn);
+		}
+	}
 }
 
 function getSavedSubreddits() {
-    if (localStorage.getItem('savedSubreddits')) {
-        // console.log(localStorage.getItem('savedSubreddits'));
-        let savedSubreddits = localStorage.getItem('savedSubreddits');
-        return savedSubreddits.split(',');
-    } else {
-        // localStorage.setItem('savedSubreddits', '');
-        return false
-    }
-    
+	if (localStorage.getItem('savedSubreddits')) {
+		// console.log(localStorage.getItem('savedSubreddits'));
+		let savedSubreddits = localStorage.getItem('savedSubreddits');
+		return savedSubreddits.split(',');
+	} else {
+		// localStorage.setItem('savedSubreddits', '');
+		return false
+	}
+	
 }
 
 // noinspection JSUnusedLocalSymbols
 function removeSavedSubreddit(subreddit) {
-    let savedSubreddits = getSavedSubreddits();
-    if (savedSubreddits) {
-        savedSubreddits = savedSubreddits.filter(function(e) { return e !== subreddit });
-        localStorage.setItem('savedSubreddits', savedSubreddits.toString());
-    }
+	let savedSubreddits = getSavedSubreddits();
+	if (savedSubreddits) {
+		savedSubreddits = savedSubreddits.filter(function(e) { return e !== subreddit });
+		localStorage.setItem('savedSubreddits', savedSubreddits.toString());
+	}
 }
 
 displaySavedSubreddits();
@@ -1441,12 +1441,12 @@ displaySavedSubreddits();
 const popularSubreddits: NodeListOf<HTMLButtonElement> = document.querySelectorAll('.popular-subreddits>button')
 
 for (let subreddit of popularSubreddits) {
-    subreddit.addEventListener('click', async () => {
-        if (isDebugMode()) console.log("default sub click", subreddit.id);
-        setURLAnchor(`/r/${subreddit.id}`);
-        clearPost();
-        showSubreddit(subreddit.id);
-    })
+	subreddit.addEventListener('click', async () => {
+		if (isDebugMode()) console.log("default sub click", subreddit.id);
+		setURLAnchor(`/r/${subreddit.id}`);
+		clearPost();
+		showSubreddit(subreddit.id);
+	})
 }
 
 
@@ -1461,40 +1461,40 @@ for (let subreddit of popularSubreddits) {
 
 const inboxButton: HTMLElement = strictQuerySelector('.inbox-button');
 inboxButton.addEventListener('click', async () => {
-    if (isDebugMode()) console.log("inbox click", "/r/popular");
-    setURLAnchor("/r/popular");
-    clearPost();
-    showSubreddit('popular');
+	if (isDebugMode()) console.log("inbox click", "/r/popular");
+	setURLAnchor("/r/popular");
+	clearPost();
+	showSubreddit('popular');
 })
 
 function isHTMLElement(obj: any): obj is HTMLElement {
-    return (typeof obj === "object") && (obj as HTMLElement).style !== undefined;
+	return (typeof obj === "object") && (obj as HTMLElement).style !== undefined;
 }
 
 let collapsible: NodeListOf<HTMLElement> = document.querySelectorAll(".collapsible");
 for (let coll of collapsible) {
-    coll.addEventListener("click", function() {
-        // this.classList.toggle("active");
-        let content = this?.nextElementSibling;
-        if (!isHTMLElement(content)) {
-            return;
-        }
-        
-        let nextSibling = this?.firstChild?.nextSibling;
-        if (!isHTMLElement(nextSibling)) {
-            return;
-        }
-        
-        if (content.style.display === "none") {
-            nextSibling.classList.remove('ms-Icon--ChevronRight')
-            nextSibling.classList.add('ms-Icon--ChevronDownMed')
-            content.style.display = "block";
-        } else {
-            nextSibling.classList.remove('ms-Icon--ChevronDownMed')
-            nextSibling.classList.add('ms-Icon--ChevronRight')
-            content.style.display = "none";
-        }
-    });
+	coll.addEventListener("click", function() {
+		// this.classList.toggle("active");
+		let content = this?.nextElementSibling;
+		if (!isHTMLElement(content)) {
+			return;
+		}
+		
+		let nextSibling = this?.firstChild?.nextSibling;
+		if (!isHTMLElement(nextSibling)) {
+			return;
+		}
+		
+		if (content.style.display === "none") {
+			nextSibling.classList.remove('ms-Icon--ChevronRight')
+			nextSibling.classList.add('ms-Icon--ChevronDownMed')
+			content.style.display = "block";
+		} else {
+			nextSibling.classList.remove('ms-Icon--ChevronDownMed')
+			nextSibling.classList.add('ms-Icon--ChevronRight')
+			content.style.display = "none";
+		}
+	});
 }
 
 const BORDER_SIZE = 4;
@@ -1509,221 +1509,221 @@ function resize(e: MouseEvent){
 
 panel.addEventListener("mousedown", function(e: MouseEvent){
   if (e.offsetX < BORDER_SIZE) {
-    m_pos = e.x;
-    document.addEventListener("mousemove", resize, false);
+	m_pos = e.x;
+	document.addEventListener("mousemove", resize, false);
   }
 }, false);
 
 document.addEventListener("mouseup", function(){
-    document.removeEventListener("mousemove", resize, false);
+	document.removeEventListener("mousemove", resize, false);
 }, false);
 
 const settingsButton: HTMLElement = strictQuerySelector('.settings-button');
 const settingsPanel: HTMLElement = strictQuerySelector('.settings-panel');
 
 settingsButton.addEventListener('click', () => {
-    profilePanel.classList.remove('profile-panel-show');
-    updateBlockedSubsList();
-    settingsPanel.classList.toggle('settings-panel-show');
+	profilePanel.classList.remove('profile-panel-show');
+	updateBlockedSubsList();
+	settingsPanel.classList.toggle('settings-panel-show');
 })
 
 const closeButton: HTMLElement = strictQuerySelector('.close-settings');
 
 closeButton.addEventListener('click', () => {
-    settingsPanel.classList.remove('settings-panel-show');
+	settingsPanel.classList.remove('settings-panel-show');
 })
 
 
 const checkbox: HTMLInputElement = strictQuerySelector('#flexSwitchCheckChecked');
 checkbox.addEventListener('change', function() {
-    const body = strictQuerySelector('body');
-    if (checkbox.checked) {
-        body.classList.remove('light')
-        body.classList.add('dark')
-        localStorage.setItem('isDarkMode', 'true');
-    } else {
-        body.classList.remove('dark')
-        body.classList.add('light')
-        localStorage.setItem('isDarkMode', 'false');
-    }
+	const body = strictQuerySelector('body');
+	if (checkbox.checked) {
+		body.classList.remove('light')
+		body.classList.add('dark')
+		localStorage.setItem('isDarkMode', 'true');
+	} else {
+		body.classList.remove('dark')
+		body.classList.add('light')
+		localStorage.setItem('isDarkMode', 'false');
+	}
 })
 
 function setDarkMode() {
-    if (localStorage.getItem('isDarkMode') == 'true') {
-        checkbox.checked = true;
-        strictQuerySelector('body').classList.remove('light');
-        strictQuerySelector('body').classList.add('dark');
-    } else if (localStorage.getItem('isDarkMode') == 'false') {
-        strictQuerySelector('body').classList.remove('dark');
-        strictQuerySelector('body').classList.add('light');
-        checkbox.checked = false;
-    }    
+	if (localStorage.getItem('isDarkMode') == 'true') {
+		checkbox.checked = true;
+		strictQuerySelector('body').classList.remove('light');
+		strictQuerySelector('body').classList.add('dark');
+	} else if (localStorage.getItem('isDarkMode') == 'false') {
+		strictQuerySelector('body').classList.remove('dark');
+		strictQuerySelector('body').classList.add('light');
+		checkbox.checked = false;
+	}    
 }
 
 const checkbox2: HTMLInputElement = strictQuerySelector('#show-subreddit-details');
 checkbox2.addEventListener('change', function() {
-    if (checkbox2.checked) {
-        localStorage.setItem('showSubDetails', 'true');
-        (document.querySelector('.subreddit-info') as HTMLElement).style.display = 'flex';
-        scrollable.style.height = 'calc(100vh - 273px)';
-    } else {
-        localStorage.setItem('showSubDetails', 'false');
-        (document.querySelector('.subreddit-info') as HTMLElement).style.display = 'none';
-        subredditInfoContainer.style.display = 'none';
-        headerButtons.style.borderRadius = "4px 4px 0px 0px";
-        scrollable.style.height = 'calc(100vh - 178px)';
-    }
+	if (checkbox2.checked) {
+		localStorage.setItem('showSubDetails', 'true');
+		(document.querySelector('.subreddit-info') as HTMLElement).style.display = 'flex';
+		scrollable.style.height = 'calc(100vh - 273px)';
+	} else {
+		localStorage.setItem('showSubDetails', 'false');
+		(document.querySelector('.subreddit-info') as HTMLElement).style.display = 'none';
+		subredditInfoContainer.style.display = 'none';
+		headerButtons.style.borderRadius = "4px 4px 0px 0px";
+		scrollable.style.height = 'calc(100vh - 178px)';
+	}
 })
 
 function showSubredditDetails() {
-    if (localStorage.getItem('showSubDetails') == 'true') {
-        checkbox2.checked = true;
-    } else if (localStorage.getItem('showSubDetails') == 'false') {
-        checkbox2.checked = false;
-    }    
+	if (localStorage.getItem('showSubDetails') == 'true') {
+		checkbox2.checked = true;
+	} else if (localStorage.getItem('showSubDetails') == 'false') {
+		checkbox2.checked = false;
+	}    
 }
 
 const checkbox3: HTMLInputElement = strictQuerySelector('#show-long-emails');
 checkbox3.addEventListener('change', function() {
-    if (checkbox3.checked) {
-        localStorage.setItem('showLongAddress', 'true');
-    } else {
-        localStorage.setItem('showLongAddress', 'false');
-    }
+	if (checkbox3.checked) {
+		localStorage.setItem('showLongAddress', 'true');
+	} else {
+		localStorage.setItem('showLongAddress', 'false');
+	}
 })
 
 function showLongAddress() {
-    if (localStorage.getItem('showLongAddress') == 'true') {
-        checkbox3.checked = true;
-    } else if (localStorage.getItem('showLongAddress') == 'false') {
-        checkbox3.checked = false;
-    }    
+	if (localStorage.getItem('showLongAddress') == 'true') {
+		checkbox3.checked = true;
+	} else if (localStorage.getItem('showLongAddress') == 'false') {
+		checkbox3.checked = false;
+	}    
 }
 
 const checkbox4: HTMLInputElement = strictQuerySelector('#hide-media');
 checkbox4.addEventListener('change', function() {
-    const body = strictQuerySelector('body');
-    if (checkbox4.checked) {
-        localStorage.setItem('hideMedia', 'true');
-        if (document.querySelector('.post-image')) {
-            (document.querySelector('.post-image') as HTMLElement).style.display = 'none';
-        } else if (document.querySelector('.post-video')) {
-            (document.querySelector('.post-video') as HTMLElement).style.display = 'noen';
-        }
-    } else {
-        localStorage.setItem('hideMedia', 'false');
-        if (document.querySelector('.post-image')) {
-            (document.querySelector('.post-image') as HTMLElement).style.display = 'block';
-        } else if (document.querySelector('.post-video')) {
-            (document.querySelector('.post-video') as HTMLElement).style.display = 'block';
-        }
-    }
+	const body = strictQuerySelector('body');
+	if (checkbox4.checked) {
+		localStorage.setItem('hideMedia', 'true');
+		if (document.querySelector('.post-image')) {
+			(document.querySelector('.post-image') as HTMLElement).style.display = 'none';
+		} else if (document.querySelector('.post-video')) {
+			(document.querySelector('.post-video') as HTMLElement).style.display = 'noen';
+		}
+	} else {
+		localStorage.setItem('hideMedia', 'false');
+		if (document.querySelector('.post-image')) {
+			(document.querySelector('.post-image') as HTMLElement).style.display = 'block';
+		} else if (document.querySelector('.post-video')) {
+			(document.querySelector('.post-video') as HTMLElement).style.display = 'block';
+		}
+	}
 })
 
 function hideMedia() {
-    if (localStorage.getItem('hideMedia') == 'true') {
-        checkbox4.checked = true;
-        if (document.querySelector('.post-image')) {
-            (document.querySelector('.post-image') as HTMLElement).style.visibility = 'hidden';
-        } else if (document.querySelector('.post-video')) {
-            (document.querySelector('.post-video') as HTMLElement).style.visibility = 'hidden';
-        }
-    } else if (localStorage.getItem('hideMedia') == 'false') {
-        checkbox4.checked = false;
-        if (document.querySelector('.post-image')) {
-            (document.querySelector('.post-image') as HTMLElement).style.visibility = 'visible';
-        } else if (document.querySelector('.post-video')) {
-            (document.querySelector('.post-video') as HTMLElement).style.visibility = 'visible';
-        }
-    }
+	if (localStorage.getItem('hideMedia') == 'true') {
+		checkbox4.checked = true;
+		if (document.querySelector('.post-image')) {
+			(document.querySelector('.post-image') as HTMLElement).style.visibility = 'hidden';
+		} else if (document.querySelector('.post-video')) {
+			(document.querySelector('.post-video') as HTMLElement).style.visibility = 'hidden';
+		}
+	} else if (localStorage.getItem('hideMedia') == 'false') {
+		checkbox4.checked = false;
+		if (document.querySelector('.post-image')) {
+			(document.querySelector('.post-image') as HTMLElement).style.visibility = 'visible';
+		} else if (document.querySelector('.post-video')) {
+			(document.querySelector('.post-video') as HTMLElement).style.visibility = 'visible';
+		}
+	}
 }
 
 let spoilerTexts = document.querySelectorAll('span.md-spoiler-text') as NodeListOf<HTMLElement>;
 if (spoilerTexts) {
-    for (let spoilerText of spoilerTexts) {
-        spoilerText.addEventListener('click', function () {
-            // spoilerText.classList.remove('md-spoiler-text');
-            spoilerText.classList.add('hello');
+	for (let spoilerText of spoilerTexts) {
+		spoilerText.addEventListener('click', function () {
+			// spoilerText.classList.remove('md-spoiler-text');
+			spoilerText.classList.add('hello');
 
-            // console.log('spoiler text clicked');
-        });
-    }
+			// console.log('spoiler text clicked');
+		});
+	}
 }
 
 let sidebarButtons = document.querySelectorAll('.collapses button, .subreddit.button') as NodeListOf<HTMLElement>;
 for (let sidebarButton of sidebarButtons) {
-    sidebarButton.addEventListener('click', (event) => {
-        event.stopPropagation();
-        for (let allsidebarButton of sidebarButtons) {
-            allsidebarButton.classList.remove('selected');
-        }
-        sidebarButton.classList.add('selected');
-    })
+	sidebarButton.addEventListener('click', (event) => {
+		event.stopPropagation();
+		for (let allsidebarButton of sidebarButtons) {
+			allsidebarButton.classList.remove('selected');
+		}
+		sidebarButton.classList.add('selected');
+	})
 }
 
 let pageTitleInputForm = document.querySelector('.page-title-input-form') as HTMLInputElement;
 let pageTitleInputBox = document.querySelector('.page-title-input-box') as HTMLInputElement;
 
 pageTitleInputForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    localStorage.setItem('pageTitle', pageTitleInputBox.value);
-    document.title = pageTitleInputBox.value;
+	event.preventDefault();
+	localStorage.setItem('pageTitle', pageTitleInputBox.value);
+	document.title = pageTitleInputBox.value;
 })
 
 function setPageTitle() {
-    if (localStorage.getItem('pageTitle')) {
-        document.title = localStorage.getItem('pageTitle');
-    }
+	if (localStorage.getItem('pageTitle')) {
+		document.title = localStorage.getItem('pageTitle');
+	}
 }
 
 window.addEventListener("hashchange", () => {
-    clearPost();
-    const permalink = permalinkFromURLAnchor();
-    if (isDebugMode()) console.log(`history buttons clicked`, permalink);
-    showRedditPageOrDefault(permalink);
+	clearPost();
+	const permalink = permalinkFromURLAnchor();
+	if (isDebugMode()) console.log(`history buttons clicked`, permalink);
+	showRedditPageOrDefault(permalink);
 });
 
 let profileButton: HTMLElement = strictQuerySelector('.profile-button');
 let profilePanel: HTMLElement = strictQuerySelector('.profile-panel');
 
 profileButton.addEventListener('click', () => {
-    settingsPanel.classList.remove('settings-panel-show');
-    profilePanel.classList.toggle('profile-panel-show');
+	settingsPanel.classList.remove('settings-panel-show');
+	profilePanel.classList.toggle('profile-panel-show');
 })
 
 
 document.addEventListener('click', function handleClickOutsideBox(event) {
-    let searchResults = document.querySelector('.search-results');
-    // let sortMenu = document.querySelector('.sort-menu') as HTMLElement;
-    // let sortTopMenu = document.querySelector('.sort-top-menu') as HTMLElement;
+	let searchResults = document.querySelector('.search-results');
+	// let sortMenu = document.querySelector('.sort-menu') as HTMLElement;
+	// let sortTopMenu = document.querySelector('.sort-top-menu') as HTMLElement;
 
-    let target = event.target as Node;
+	let target = event.target as Node;
 
-    // hdie search results/open menus if user clicks out of it
-    if (!searchResults.contains(target)) {hideSearchResults()}
-    // if (!sortMenu.contains(target)) {sortMenu.style.display = 'none';}
-    // if (!sortTopMenu.contains(target)) {sortTopMenu.style.display = 'none';}
+	// hdie search results/open menus if user clicks out of it
+	if (!searchResults.contains(target)) {hideSearchResults()}
+	// if (!sortMenu.contains(target)) {sortMenu.style.display = 'none';}
+	// if (!sortTopMenu.contains(target)) {sortTopMenu.style.display = 'none';}
 });
 
 
 
 let inputBox = document.querySelector(".search") as HTMLInputElement;
 if (subredditName) {
-    subredditName.addEventListener('input', function() {
-    // searchBoxClicked();
-    // console.log(inputBox.value)
-    if (subredditName.value.length > 0) {
-        if (subredditName.value.startsWith('r/')) {
-            let results = subreddits.filter(sub => sub.subreddit.toLowerCase().includes(inputBox.value.toLowerCase().slice(2)));
-            displaySearchResults(results.slice(0, 5))
-        } else {
-            let results = subreddits.filter(sub => sub.subreddit.toLowerCase().includes(inputBox.value.toLowerCase()));
-            displaySearchResults(results.slice(0, 5))
-        }
-        // console.log(results.slice(0, 5));
-    } else {
-        hideSearchResults()
-    }
+	subredditName.addEventListener('input', function() {
+	// searchBoxClicked();
+	// console.log(inputBox.value)
+	if (subredditName.value.length > 0) {
+		if (subredditName.value.startsWith('r/')) {
+			let results = subreddits.filter(sub => sub.subreddit.toLowerCase().includes(inputBox.value.toLowerCase().slice(2)));
+			displaySearchResults(results.slice(0, 5))
+		} else {
+			let results = subreddits.filter(sub => sub.subreddit.toLowerCase().includes(inputBox.value.toLowerCase()));
+			displaySearchResults(results.slice(0, 5))
+		}
+		// console.log(results.slice(0, 5));
+	} else {
+		hideSearchResults()
+	}
   });
 //   subredditName.addEventListener('click', function() {
 //     // searchBoxClicked();
@@ -1738,53 +1738,53 @@ if (subredditName) {
 }
 
 function displaySearchResults(results) {
-    let searchResults = document.querySelector('.search-results') as HTMLElement;
-    searchResults.style.display = 'block';
-    searchResults.innerHTML = '';
+	let searchResults = document.querySelector('.search-results') as HTMLElement;
+	searchResults.style.display = 'block';
+	searchResults.innerHTML = '';
 
-    for (let result of results) {
-        searchResults.innerHTML += `
-            <a href="#/r/${result.subreddit}" class="search-result-link">
-                <div class="search-result-item">
-                    <img src="${result.icon}" class="search-subreddit-icon"/>
-                    <div class="search-result-item-info">
-                        <div class="search-result-subreddit-name">r/${result.subreddit}</div>
-                        <div class="search-result-subreddit-info">Community • ${numberFormatter(result.members)} members</div>
-                    </div>
-                </div>
-            </a>`
-        // console.log(searchResultItem)
-        let searchResultLinks = document.querySelectorAll('.search-result-link');
+	for (let result of results) {
+		searchResults.innerHTML += `
+			<a href="#/r/${result.subreddit}" class="search-result-link">
+				<div class="search-result-item">
+					<img src="${result.icon}" class="search-subreddit-icon"/>
+					<div class="search-result-item-info">
+						<div class="search-result-subreddit-name">r/${result.subreddit}</div>
+						<div class="search-result-subreddit-info">Community • ${numberFormatter(result.members)} members</div>
+					</div>
+				</div>
+			</a>`
+		// console.log(searchResultItem)
+		let searchResultLinks = document.querySelectorAll('.search-result-link');
 
-        for (let searchResultLink of searchResultLinks) {
-            searchResultLink.addEventListener('click', function() {
-                console.log('outer button clicked');
-                hideSearchResults();
-                // inputBox.value = '';
-                // let yourSubredditsSection = document.querySelector('.your-subreddits')
-                // subredditSection.innerHTML += `<button class="subreddit button" id="${this.id}">r/${this.id}</button>`
-            })
-        }
-    }
+		for (let searchResultLink of searchResultLinks) {
+			searchResultLink.addEventListener('click', function() {
+				console.log('outer button clicked');
+				hideSearchResults();
+				// inputBox.value = '';
+				// let yourSubredditsSection = document.querySelector('.your-subreddits')
+				// subredditSection.innerHTML += `<button class="subreddit button" id="${this.id}">r/${this.id}</button>`
+			})
+		}
+	}
 }
 
 let addSubreddit = document.querySelector('.add-subreddit-button') as HTMLElement;
 if (addSubreddit) {
-    addSubreddit.addEventListener('click', (event) => {
-        console.log('inner button clicked');
-        event.stopPropagation();
-    })
+	addSubreddit.addEventListener('click', (event) => {
+		console.log('inner button clicked');
+		event.stopPropagation();
+	})
 }
 
 
 function hideSearchResults() {
-    let searchResults = document.querySelector('.search-results') as HTMLElement;
-    searchResults.style.display = 'none';
+	let searchResults = document.querySelector('.search-results') as HTMLElement;
+	searchResults.style.display = 'none';
 }
 
 function numberFormatter(number) {
-    let num = parseInt(number)
-    return Math.abs(num) > 999999 ? Math.sign(num)*Number((Math.abs(num)/1000000).toFixed(1)) + 'm' : Math.sign(num)*Number((Math.abs(num)/1000).toFixed(1)) + 'k'
+	let num = parseInt(number)
+	return Math.abs(num) > 999999 ? Math.sign(num)*Number((Math.abs(num)/1000000).toFixed(1)) + 'm' : Math.sign(num)*Number((Math.abs(num)/1000).toFixed(1)) + 'k'
 }
 
 setDarkMode();  
@@ -1799,11 +1799,11 @@ setPageTitle();
 // We start actually doing things now
 
 if (isDebugMode()) {
-    // Remove loading screen
-    const loadingScreen = document.getElementById("loadingScreen");
-    if (loadingScreen) {
-        loadingScreen.style.display = "none";
-    }
+	// Remove loading screen
+	const loadingScreen = document.getElementById("loadingScreen");
+	if (loadingScreen) {
+		loadingScreen.style.display = "none";
+	}
 }
 
 const permalink = permalinkFromURLAnchor();
